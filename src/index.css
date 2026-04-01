@@ -1,0 +1,25 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  /* Custom Green from user: #79a17e */
+  --color-teal-50: #f4f7f4;
+  --color-teal-100: #e3ebe4;
+  --color-teal-200: #c9d8cb;
+  --color-teal-300: #a4c0a7;
+  --color-teal-400: #79a17e;
+  /* Maps to Navbar active items */
+  --color-teal-500: #618f67;
+  --color-teal-600: #79a17e;
+  /* Maps to buttons across app */
+  --color-teal-700: #5c8160;
+  /* Maps to hover states */
+  --color-teal-800: #47664a;
+  --color-teal-900: #3c543f;
+}
+
+body {
+  background-color: #f4f6f8;
+  font-family: 'Inter', sans-serif;
+  color: #334155;
+}
