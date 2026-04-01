@@ -290,12 +290,13 @@ const ManagerDashboard = () => {
                            {new Date(entry.date).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'short' })}
                          </span>
                          {entry.isFestivo && <span className="text-[10px] font-bold text-purple-600 uppercase">Día Festivo</span>}
-                         <span className="text-[12px] font-mono text-slate-500 bg-slate-100 px-2 py-0.5 rounded-sm w-max border border-slate-200">
-                           {entry.analitica || 'Sin Proyecto'}
-                         </span>
                       </div>
                       
                       <div className="flex items-center gap-6">
+                        <div className="text-center">
+                          <p className="text-[11px] font-semibold text-slate-400 uppercase mb-1">Analítica</p>
+                          <p className="text-[14px] font-mono text-slate-700 bg-slate-50 px-2 py-0.5 rounded border border-slate-200">{entry.analitica || '---'}</p>
+                        </div>
                         <div className="text-center">
                           <p className="text-[11px] font-semibold text-slate-400 uppercase mb-1">Entrada</p>
                           <p className="text-[14px] font-mono text-slate-700">{formatTime(entry.clockIn)}</p>
