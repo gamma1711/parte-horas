@@ -279,8 +279,12 @@ const ManagerDashboard = () => {
               <div className="space-y-4">
                 {selectedGroup.entries.map(entry => {
                   let dayHrs = 0;
+                  let normalHrs = 0;
+                  let extraHrs = 0;
                   if(entry.clockIn && entry.clockOut) {
                     dayHrs = (new Date(entry.clockOut) - new Date(entry.clockIn)) / 3600000;
+                    normalHrs = Math.min(dayHrs, 8);
+                    extraHrs = Math.max(0, dayHrs - 8);
                   }
                   
                   return (
@@ -293,20 +297,32 @@ const ManagerDashboard = () => {
                       </div>
                       
                       <div className="flex items-center gap-6">
-                        <div className="text-center">
+                        <div className="text-center hidden sm:block">
                           <p className="text-[11px] font-semibold text-slate-400 uppercase mb-1">Analítica</p>
                           <p className="text-[14px] font-mono text-slate-700 bg-slate-50 px-2 py-0.5 rounded border border-slate-200">{entry.analitica || '---'}</p>
                         </div>
-                        <div className="text-center">
+                        <div className="text-center hidden sm:block">
                           <p className="text-[11px] font-semibold text-slate-400 uppercase mb-1">Entrada</p>
                           <p className="text-[14px] font-mono text-slate-700">{formatTime(entry.clockIn)}</p>
                         </div>
-                        <div className="text-center">
+                        <div className="text-center hidden sm:block">
                           <p className="text-[11px] font-semibold text-slate-400 uppercase mb-1">Salida</p>
                           <p className="text-[14px] font-mono text-slate-700">{formatTime(entry.clockOut)}</p>
                         </div>
-                        <div className="text-center bg-slate-50 px-4 py-2 rounded border border-slate-100">
-                           <p className="text-[11px] font-semibold text-slate-500 uppercase mb-1">Total</p>
+                        <div className="text-center">
+                           <p className="text-[11px] font-semibold text-slate-500 uppercase mb-1">Normales</p>
+                           <p className="text-[14px] font-bold text-slate-700">{normalHrs.toFixed(1)}h</p>
+                        </div>
+                        <div className="text-center">
+                           <p className="text-[11px] font-semibold text-blue-500 uppercase mb-1">Extras</p>
+                           {extraHrs > 0 ? (
+                             <p className="text-[14px] font-bold text-blue-700">{extraHrs.toFixed(1)}h</p>
+                           ) : (
+                             <p className="text-[14px] font-bold text-slate-300">--</p>
+                           )}
+                        </div>
+                        <div className="text-center bg-slate-50 px-3 py-1.5 rounded border border-slate-200">
+                           <p className="text-[11px] font-semibold text-slate-500 uppercase mb-0.5">Total</p>
                            <p className="text-[14px] font-bold text-slate-800">{dayHrs.toFixed(1)}h</p>
                         </div>
                       </div>

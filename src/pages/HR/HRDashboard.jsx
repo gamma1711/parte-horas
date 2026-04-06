@@ -226,6 +226,8 @@ const HRDashboard = () => {
                    const d = new Date(entry.date);
                    const isSunday = d.getDay() === 0;
                    const entryHrs = entry.clockIn && entry.clockOut ? (new Date(entry.clockOut) - new Date(entry.clockIn)) / 3600000 : 0;
+                   const normalHrs = Math.min(entryHrs, 8);
+                   const extraHrs = Math.max(0, entryHrs - 8);
                    
                    return (
                      <div key={entry.id} className={`bg-white border rounded-sm p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm ${entry.isFestivo ? 'border-purple-200 bg-purple-50/10' : isSunday ? 'border-orange-200 bg-orange-50/10' : 'border-slate-200'}`}>
@@ -237,13 +239,25 @@ const HRDashboard = () => {
                           {isSunday && !entry.isFestivo && <span className="text-[10px] font-bold text-orange-600 uppercase">Día Especial (Dom)</span>}
                         </div>
                         
-                        <div className="flex items-center gap-8">
-                           <div className="text-center">
+                        <div className="flex items-center gap-6">
+                           <div className="text-center hidden sm:block">
                              <p className="text-[10px] font-semibold text-slate-400 uppercase">Proyecto</p>
                              <p className="text-[12px] font-mono text-slate-700">{entry.analitica}</p>
                            </div>
                            <div className="text-center">
-                             <p className="text-[10px] font-semibold text-slate-400 uppercase">H. Brutas</p>
+                             <p className="text-[10px] font-semibold text-slate-400 uppercase">Normales</p>
+                             <p className="text-[12px] font-bold text-slate-700">{normalHrs.toFixed(1)}h</p>
+                           </div>
+                           <div className="text-center">
+                             <p className="text-[10px] font-semibold text-blue-500 uppercase">Extras</p>
+                             {extraHrs > 0 ? (
+                               <p className="text-[12px] font-bold text-blue-700">{extraHrs.toFixed(1)}h</p>
+                             ) : (
+                               <p className="text-[12px] font-bold text-slate-300">--</p>
+                             )}
+                           </div>
+                           <div className="text-center bg-slate-50 px-2 py-1 rounded border border-slate-100">
+                             <p className="text-[10px] font-semibold text-slate-500 uppercase">Total</p>
                              <p className={`text-[12px] font-bold ${isSunday ? 'text-orange-700' : 'text-slate-800'}`}>{entryHrs.toFixed(1)}h</p>
                            </div>
                            <div className="text-center">
