@@ -1,9 +1,9 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useMockData } from '../context/MockDataContext';
+import { useData } from '../context/DataContext';
 
 const Home = () => {
-  const { login, currentUser } = useMockData();
+  const { login, currentUser, users } = useData();
   const navigate = useNavigate();
 
   useEffect(() => {

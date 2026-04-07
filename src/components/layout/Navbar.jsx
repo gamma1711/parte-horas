@@ -1,10 +1,10 @@
 import React from 'react';
-import { useMockData } from '../../context/MockDataContext';
+import { useData } from '../../context/DataContext';
 import { LogOut, User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const Navbar = () => {
-  const { currentUser, logout } = useMockData();
+  const { currentUser, logout } = useData();
   const navigate = useNavigate();
 
   const handleLogout = () => {

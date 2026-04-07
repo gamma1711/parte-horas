@@ -1,6 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { MockDataProvider, useMockData } from './context/MockDataContext';
+import { DataProvider, useData } from './context/DataContext';
 
 import Navbar from './components/layout/Navbar';
 import Home from './pages/Home';
@@ -9,7 +9,7 @@ import ManagerDashboard from './pages/Manager/ManagerDashboard';
 import HRDashboard from './pages/HR/HRDashboard';
 
 const ProtectedRoute = ({ children, allowedRole }) => {
-  const { currentUser } = useMockData();
+  const { currentUser } = useData();
   
   if (!currentUser) {
     return <Navigate to="/" replace />;
@@ -77,11 +77,11 @@ function AppRoutes() {
 
 function App() {
   return (
-    <MockDataProvider>
+    <DataProvider>
       <Router>
         <AppRoutes />
       </Router>
-    </MockDataProvider>
+    </DataProvider>
   );
 }
 

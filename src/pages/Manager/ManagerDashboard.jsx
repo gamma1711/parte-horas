@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useMockData } from '../../context/MockDataContext';
+import { useData } from '../../context/DataContext';
 import { Filter, Search, Eye, Check, Calendar, Clock, FileText, ChevronLeft, X } from 'lucide-react';
 
 // Helper to get ISO Week string like "2024-W12"
@@ -16,7 +16,7 @@ const getWeekRange = (dateString) => {
 };
 
 const ManagerDashboard = () => {
-  const { timeEntries, approveWeek } = useMockData();
+  const { timeEntries, approveWeek } = useData();
   const [filterState, setFilterState] = useState('pending');
   const [searchTerm, setSearchTerm] = useState('');
   

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useMockData } from '../../context/MockDataContext';
+import { useData } from '../../context/DataContext';
 import { Clock, CheckCircle, ImagePlus, Check, FileText, CreditCard } from 'lucide-react';
 
 const getWeekRange = (dateString) => {
@@ -15,7 +15,7 @@ const getWeekRange = (dateString) => {
 };
 
 const WorkerDashboard = () => {
-  const { currentUser, timeEntries, clockIn, clockOut, uploadOT } = useMockData();
+  const { currentUser, timeEntries, clockIn, clockOut, uploadOT } = useData();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [analitica, setAnalitica] = useState('');
   const [hasDieta, setHasDieta] = useState(false);
@@ -75,11 +75,10 @@ const WorkerDashboard = () => {
     }
   };
 
-  const handleFileUpload = (e, entryId) => {
+  const handleFileUpload = async (e, entryId) => {
     const file = e.target.files[0];
     if (file) {
-      const objectUrl = URL.createObjectURL(file);
-      uploadOT(entryId, objectUrl);
+      await uploadOT(entryId, file);
     }
   };
 
