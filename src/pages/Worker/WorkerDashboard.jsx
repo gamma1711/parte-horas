@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useData } from '../../context/DataContext';
-import { Clock, CheckCircle, ImagePlus, Check, FileText, CreditCard } from 'lucide-react';
+import { Clock, CheckCircle, ImagePlus, Check, FileText, CreditCard, Search } from 'lucide-react';
 
 const getWeekRange = (dateString) => {
   const d = new Date(dateString);
@@ -180,90 +180,121 @@ const WorkerDashboard = () => {
         </div>
       </div>
 
-      {/* Resumen Semanal y Carga de OT agrupado*/}
+      {/* Resumen Semanal y Carga de OT agrupado - Panel NC */}
       <div className="bg-white border border-slate-200 rounded-sm shadow-sm flex flex-col font-sans overflow-hidden">
-        <h2 className="text-base font-semibold text-slate-800 px-5 py-4 flex items-center gap-2 bg-white">
-          <FileText size={16} className="text-slate-500" />
-          Mi Historial de Actividades
-        </h2>
+        
+        {/* Header con Título y Buscador */}
+        <div className="border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between px-4 py-3 gap-3">
+          <h2 className="text-[15px] font-semibold text-slate-800 tracking-tight flex items-center gap-2">
+            <FileText size={16} className="text-slate-500" />
+            Mi Historial de Actividades
+          </h2>
+          <div className="relative">
+            <input 
+              type="text" 
+              placeholder="Buscar fecha o proyecto..." 
+              className="text-[13px] border border-slate-300 rounded px-3 py-1.5 w-full sm:w-64 text-slate-700 focus:outline-none focus:border-blue-500"
+            />
+            <Search size={14} className="absolute right-2.5 top-2 text-slate-400" />
+          </div>
+        </div>
 
-        <div className="flex flex-col">
+        {/* Rows per page */}
+        <div className="px-4 py-3 flex items-center justify-between text-[13px] text-slate-500 border-b border-slate-100">
+           <div className="flex items-center gap-2">
+             <span>Showing últimos registros</span>
+             <div className="flex items-center gap-1.5 ml-2 hidden sm:flex">
+               <select className="border border-slate-300 rounded px-2 py-1 text-slate-700 focus:outline-none bg-white">
+                 <option>25</option>
+                 <option>50</option>
+                 <option>100</option>
+               </select>
+               <span>rows per page</span>
+             </div>
+           </div>
+        </div>
+
+        <div className="overflow-x-auto">
           {groupedList.length === 0 ? (
-            <div className="p-8 text-center text-[13px] text-slate-400 border-t border-slate-100">
+            <div className="p-8 text-center text-[13px] text-slate-400">
               No hay registros para mostrar.
             </div>
           ) : (
-            groupedList.map((weekGroup) => (
-              <div key={weekGroup.weekKey} className="border-t border-slate-200">
-
-                {/* Cabecera de la Semana */}
-                <div className="bg-slate-50/80 px-5 py-3 flex flex-wrap items-center justify-between border-b border-slate-100">
-                  <div className="flex items-center gap-3">
-                    <span className="font-bold text-slate-700 text-[13px]">{weekGroup.weekKey}</span>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className="text-[12px] font-semibold text-slate-600">
-                      Total Horas Semanales: <span className="text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100 ml-1">{weekGroup.totalHours.toFixed(1)} hrs</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Dias de la semana */}
-                <div className="flex flex-col divide-y divide-slate-100 bg-white">
-                  {weekGroup.entries.map((entry) => (
-                    <div key={entry.id} className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-slate-50/50 transition-colors">
-
-                      {/* Info Basica */}
-                      <div className="flex flex-col gap-1 w-full sm:w-auto">
-                        <div className="flex flex-wrap items-center gap-2 mb-1">
-                          <span className="font-semibold text-[14px] text-slate-800 capitalize">
-                            {new Date(entry.date).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' })}
-                          </span>
-                          {getStatusBadge(entry.status)}
-                          {entry.analitica && entry.analitica !== 'N/A' && (
-                            <span className="bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 text-slate-600 font-mono text-[11px] ml-1">
-                              {entry.analitica}
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-4 text-[12px] text-slate-500">
-                          <span className="font-mono">In: {formatTime(entry.clockIn)}</span>
-                          <span className="font-mono">Out: {formatTime(entry.clockOut)}</span>
-                        </div>
-                      </div>
-
-                      {/* Zona Carga de OT */}
-                      <div className="flex items-center border border-slate-200 rounded-sm bg-slate-50 p-2 shrink-0 self-start sm:self-auto">
+            <table className="w-full text-left text-[13px]">
+              <thead className="bg-white border-b border-slate-200">
+                <tr>
+                  <th className="px-4 py-3 font-semibold text-slate-800 border-r border-slate-100">Día / Fecha</th>
+                  <th className="px-4 py-3 font-semibold text-slate-800 border-r border-slate-100">Proyecto</th>
+                  <th className="px-4 py-3 font-semibold text-slate-800 border-r border-slate-100 text-center">Entrada</th>
+                  <th className="px-4 py-3 font-semibold text-slate-800 border-r border-slate-100 text-center">Salida</th>
+                  <th className="px-4 py-3 font-semibold text-slate-800 border-r border-slate-100 text-center">Estado</th>
+                  <th className="px-4 py-3 font-semibold text-slate-800">Evidencia (OT)</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white">
+                {groupedList.flatMap((weekGroup) => [
+                  <tr key={`week-${weekGroup.weekKey}`} className="bg-slate-50/80 border-y border-slate-200">
+                    <td colSpan="5" className="px-4 py-2 text-[12px] uppercase text-slate-600 font-bold tracking-wider">
+                      Semana: {weekGroup.weekKey} <span className="ml-4 font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100 normal-case">Total: {weekGroup.totalHours.toFixed(1)} hrs</span>
+                    </td>
+                  </tr>,
+                  ...weekGroup.entries.map((entry) => (
+                    <tr key={entry.id} className="hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-b-0">
+                      <td className="px-4 py-3 border-r border-slate-100">
+                        <span className="font-semibold text-slate-800 capitalize">
+                          {new Date(entry.date).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' })}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 border-r border-slate-100 text-slate-600 font-medium">
+                        {entry.analitica && entry.analitica !== 'N/A' ? entry.analitica : '---'}
+                      </td>
+                      <td className="px-4 py-3 border-r border-slate-100 text-center">
+                        <span className="font-mono text-slate-500">{formatTime(entry.clockIn)}</span>
+                      </td>
+                      <td className="px-4 py-3 border-r border-slate-100 text-center">
+                        <span className="font-mono text-slate-500">{formatTime(entry.clockOut)}</span>
+                      </td>
+                      <td className="px-4 py-3 border-r border-slate-100 text-center">
+                        {getStatusBadge(entry.status)}
+                      </td>
+                      <td className="px-4 py-3">
                         {entry.otImage ? (
                           <div className="flex items-center gap-3">
-                            <a href={entry.otImage} target="_blank" rel="noreferrer" className="block relative group overflow-hidden rounded border border-slate-300 w-12 h-12 bg-white flex items-center justify-center">
+                            <a href={entry.otImage} target="_blank" rel="noreferrer" className="block w-10 h-10 rounded border border-slate-300 overflow-hidden shadow-sm hover:border-blue-500">
                               <img src={entry.otImage} alt="OT" className="w-full h-full object-cover" />
                             </a>
-                            <div className="flex flex-col">
-                              <span className="text-[12px] font-semibold text-slate-700 flex items-center gap-1"><Check size={12} className="text-green-600" /> OT Cargada</span>
-                              <label className="text-[11px] text-blue-600 hover:underline cursor-pointer mt-0.5">
-                                Acualizar foto
-                                <input type="file" accept="image/*" className="hidden" onChange={(e) => handleFileUpload(e, entry.id)} />
-                              </label>
-                            </div>
+                            <label className="text-[11px] text-blue-600 font-medium hover:underline cursor-pointer flex items-center gap-1 bg-blue-50 px-2 py-1 rounded border border-blue-100">
+                              <ImagePlus size={12}/> Actualizar
+                              <input type="file" accept="image/*" className="hidden" onChange={(e) => handleFileUpload(e, entry.id)} />
+                            </label>
                           </div>
                         ) : (
-                          <label className="flex flex-col items-center justify-center w-36 h-12 border border-dashed border-slate-300 hover:border-blue-500 bg-white hover:bg-blue-50 transition-colors cursor-pointer rounded-sm group relative">
+                          <label className="flex items-center justify-center gap-1.5 px-3 py-1.5 border border-dashed border-slate-300 text-slate-600 hover:text-blue-600 hover:border-blue-500 bg-slate-50 hover:bg-blue-50 rounded-sm cursor-pointer transition-colors w-fit text-[12px] font-medium">
                             <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => handleFileUpload(e, entry.id)} />
-                            <span className="flex items-center gap-1.5 text-[12px] font-semibold text-slate-600 group-hover:text-blue-600">
-                              <ImagePlus size={14} /> Subir OT
-                            </span>
+                            <ImagePlus size={14} /> Subir OT
                           </label>
                         )}
-                      </div>
-
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))
+                      </td>
+                    </tr>
+                  ))
+                ])}
+              </tbody>
+            </table>
           )}
         </div>
+
+        {/* Paginador Inferior */}
+        <div className="flex items-center justify-between px-4 py-4 font-sans text-[13px] border-t border-slate-200 mt-2">
+          <div className="text-slate-500">
+            Showing records
+          </div>
+          <div className="flex items-center gap-1">
+            <button className="px-3 py-1.5 border border-slate-300 bg-white text-slate-400 rounded-l-md hover:bg-slate-50 cursor-not-allowed">Previous</button>
+            <button className="px-3 py-1.5 border-t border-b border-r border-blue-600 bg-blue-600 text-white font-medium hover:bg-blue-700">1</button>
+            <button className="px-3 py-1.5 border-t border-b border-r border-slate-300 bg-white text-slate-400 rounded-r-md hover:bg-slate-50 cursor-not-allowed">Next</button>
+          </div>
+        </div>
+
       </div>
 
     </div>

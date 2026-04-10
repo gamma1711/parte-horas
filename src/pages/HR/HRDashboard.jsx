@@ -94,39 +94,176 @@ const HRDashboard = () => {
   return (
     <div className="max-w-7xl mx-auto flex flex-col gap-4 font-sans text-slate-700 relative">
 
-      {/* Caja de Filtros */}
-      <div className="bg-white border border-slate-200 rounded-sm shadow-sm">
-        <div className="border-b border-slate-100 px-4 py-3 flex items-center gap-2">
-          <Filter size={16} className="text-slate-500" />
-          <h2 className="text-sm font-semibold text-slate-800">Panel de Consolidación RRHH</h2>
-        </div>
-
-        <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[12px] font-medium text-slate-600">Buscar por Empleado o Período</label>
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Ej. Juan o 01/04..."
-                value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
-                className="text-[13px] border border-slate-300 rounded px-3 py-1.5 text-slate-700 focus:outline-none focus:border-blue-500 w-full"
-              />
-              <Search size={14} className="absolute right-2.5 top-2 text-slate-400" />
+      {selectedGroup ? (
+        <div className="bg-white border border-slate-200 rounded-sm shadow-sm flex flex-col flex-1 pb-4 animate-fade-in">
+          <div className="border-b border-slate-200 px-6 py-4 flex items-center justify-between bg-slate-50">
+            <div className="flex items-center gap-4">
+              <button onClick={closeModal} className="text-slate-400 hover:text-slate-700 transition-colors bg-white border border-slate-200 p-1.5 rounded-sm shadow-sm">
+                <ChevronLeft size={18} />
+              </button>
+              <div>
+                <h2 className="text-lg font-bold text-slate-800 leading-tight">Auditoría Nómina Especial</h2>
+                <p className="text-sm text-slate-500">Empleado: <span className="font-semibold text-slate-700">{selectedGroup.workerName}</span> | Período: <span className="font-mono">{selectedGroup.weekKey}</span></p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              {/* Espacio reservado para acciones top-right si las hay */}
             </div>
           </div>
-          <div className="flex flex-col justify-end">
-            <p className="text-[12px] text-slate-500 mt-2 flex items-center gap-1.5">
-              Solo se muestran las semanas aprobadas del período: <strong className="text-blue-600 font-mono">{currentWeek}</strong>
-            </p>
+
+          <div className="flex-1 overflow-x-auto p-4 sm:p-6 bg-white">
+            <div className="w-full font-sans border border-slate-200 mb-4 rounded-sm">
+              <table className="w-full text-left text-[13px] whitespace-nowrap">
+                <thead className="bg-slate-50 border-b border-slate-200">
+                  <tr>
+                    <th className="px-4 py-3 font-semibold text-slate-800 border-r border-slate-100">Día / Fecha</th>
+                    <th className="px-4 py-3 font-semibold text-slate-800 border-r border-slate-100">Proyecto / Analítica</th>
+                    <th className="px-4 py-3 font-semibold text-slate-800 border-r border-slate-100 text-center">Entrada</th>
+                    <th className="px-4 py-3 font-semibold text-slate-800 border-r border-slate-100 text-center">Salida</th>
+                    <th className="px-4 py-3 font-semibold text-slate-800 border-r border-slate-100 text-center">H. Normales</th>
+                    <th className="px-4 py-3 font-semibold text-slate-800 border-r border-slate-100 text-center">H. Extras</th>
+                    <th className="px-4 py-3 font-semibold text-slate-800 border-r border-slate-100 text-center">Total</th>
+                    <th className="px-4 py-3 font-semibold text-slate-800 border-r border-slate-100 text-center">Dietas</th>
+                    <th className="px-4 py-3 font-semibold text-slate-800">Evidencia OT</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200 bg-white">
+                  {selectedGroup.entries.map(entry => {
+                    const d = new Date(entry.date);
+                    const isSunday = d.getDay() === 0;
+                    const entryHrs = entry.clockIn && entry.clockOut ? (new Date(entry.clockOut) - new Date(entry.clockIn)) / 3600000 : 0;
+                    const normalHrs = Math.min(entryHrs, 8);
+                    const extraHrs = Math.max(0, entryHrs - 8);
+
+                    return (
+                      <tr key={entry.id} className="hover:bg-slate-50 transition-colors">
+                        <td className="px-4 py-3 border-r border-slate-100">
+                          <div className="flex items-center gap-2">
+                            <FileText size={14} className={`
+                              ${entry.isFestivo ? 'text-purple-500' : isSunday ? 'text-orange-500' : 'text-blue-500'}
+                            `} />
+                            <span className={`font-semibold capitalize ${entry.isFestivo ? 'text-purple-700' : isSunday ? 'text-orange-700' : 'text-blue-600'}`}>
+                              {d.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
+                            </span>
+                          </div>
+                          {entry.isFestivo && <span className="text-[10px] font-bold text-purple-600 uppercase mt-1 block">Día Festivo</span>}
+                          {isSunday && !entry.isFestivo && <span className="text-[10px] font-bold text-orange-600 uppercase mt-1 block">Día Especial (Dom)</span>}
+                        </td>
+                        <td className="px-4 py-3 text-slate-500 border-r border-slate-100">
+                          {entry.analitica || 'N/A'}
+                        </td>
+                        <td className="px-4 py-3 border-r border-slate-100 text-center">
+                          <span className="font-mono text-slate-600">{formatTime(entry.clockIn)}</span>
+                        </td>
+                        <td className="px-4 py-3 border-r border-slate-100 text-center">
+                          <span className="font-mono text-slate-600">{formatTime(entry.clockOut)}</span>
+                        </td>
+                        <td className="px-4 py-3 border-r border-slate-100 text-center text-slate-700 font-medium">
+                          {normalHrs.toFixed(1)} h
+                        </td>
+                        <td className="px-4 py-3 border-r border-slate-100 text-center">
+                          {extraHrs > 0 ? (
+                            <span className="font-bold text-[#b45309] bg-[#fef3c7] px-2 py-0.5 rounded border border-[#fde68a]">
+                              {extraHrs.toFixed(1)} h
+                            </span>
+                          ) : (
+                            <span className="text-slate-300">--</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 border-r border-slate-100 text-center text-slate-800 font-bold">
+                          {entryHrs.toFixed(1)} h
+                        </td>
+                        <td className="px-4 py-3 border-r border-slate-100 text-center">
+                          {entry.dieta > 0 ? (
+                            <span className="font-bold text-green-700 bg-green-50 border border-green-200 px-2 py-0.5 rounded">
+                              {entry.dieta}
+                            </span>
+                          ) : (
+                            <span className="text-slate-300">0</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          {entry.otImage ? (
+                            <div className="flex items-center gap-2">
+                              <a 
+                                href={entry.otImage} 
+                                target="_blank" 
+                                rel="noreferrer"
+                                className="text-blue-600 hover:text-blue-800 underline text-[12px] font-medium"
+                              >
+                                Ver Evidencia
+                              </a>
+                            </div>
+                          ) : (
+                            <span className="text-slate-400 text-[12px] font-medium opacity-70">
+                              Sin Evidencia
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="border-t border-slate-200 px-6 py-4 bg-white">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-slate-50 p-4 rounded border border-slate-200 gap-4">
+              <div className="flex flex-wrap gap-8">
+                <div>
+                  <p className="text-[11px] font-bold text-slate-400 uppercase">Suma H. Normales</p>
+                  <p className="text-lg font-bold text-slate-800">{selectedGroup.totalHours.toFixed(1)}</p>
+                </div>
+                <div>
+                  <p className="text-[11px] font-bold text-orange-500 uppercase">Suma H. Especiales</p>
+                  <p className="text-lg font-bold text-orange-700">{selectedGroup.specialHours.toFixed(1)}</p>
+                </div>
+                <div>
+                  <p className="text-[11px] font-bold text-purple-500 uppercase">Días Festivos</p>
+                  <p className="text-lg font-bold text-purple-700">{selectedGroup.totalFestivos}</p>
+                </div>
+                <div>
+                  <p className="text-[11px] font-bold text-green-500 uppercase">Total Dietas</p>
+                  <p className="text-lg font-bold text-green-700">{selectedGroup.totalDietas}</p>
+                </div>
+              </div>
+              <button onClick={closeModal} className="bg-slate-800 text-white px-6 py-2 rounded-sm text-[13px] font-bold hover:bg-slate-700 transition-colors w-full sm:w-auto">Cerrar Auditoría</button>
+            </div>
           </div>
         </div>
-      </div>
+      ) : (
+      <div className="bg-white border border-slate-200 rounded-sm shadow-sm flex flex-col flex-1 pb-4 animate-fade-in">
 
-      {/* Panel Global de Tabla Semanal */}
-      <div className="bg-white border border-slate-200 rounded-sm shadow-sm flex flex-col flex-1 pb-4">
-        <div className="border-b border-slate-100 px-4 py-3">
+        {/* Header con Título y Buscador */}
+        <div className="border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between px-4 py-3 gap-3">
           <h2 className="text-[15px] font-semibold text-slate-800 tracking-tight">Reporte de Nómina Semanal</h2>
+          <div className="relative">
+            <input 
+              type="text" 
+              placeholder="Buscar Empleado o Período..." 
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              className="text-[13px] border border-slate-300 rounded px-3 py-1.5 w-full sm:w-64 text-slate-700 focus:outline-none focus:border-blue-500"
+            />
+            <Search size={14} className="absolute right-2.5 top-2 text-slate-400" />
+          </div>
+        </div>
+
+        {/* Rows per page */}
+        <div className="px-4 py-3 flex items-center justify-between text-[13px] text-slate-500 border-b border-slate-100">
+           <div className="flex items-center gap-2">
+             <span>Showing 1 to {filteredGroups.length} of {filteredGroups.length} rows</span>
+             <div className="flex items-center gap-1.5 ml-2 hidden sm:flex">
+               <select className="border border-slate-300 rounded px-2 py-1 text-slate-700 focus:outline-none bg-white">
+                 <option>25</option>
+                 <option>50</option>
+                 <option>100</option>
+               </select>
+               <span>rows per page</span>
+             </div>
+           </div>
+           {/* Removido el Período badge de HR solicitado por el usuario */}
         </div>
 
         <div className="overflow-x-auto">
@@ -182,9 +319,9 @@ const HRDashboard = () => {
                   <td className="px-4 py-3 text-center">
                     <button
                       onClick={() => setSelectedGroup(group)}
-                      className="inline-flex items-center gap-1.5 bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 px-2.5 py-1.5 rounded text-[12px] font-medium transition-colors shadow-sm"
+                      className="text-blue-600 hover:text-blue-800 underline font-medium text-[13px] transition-colors"
                     >
-                      <Eye size={14} /> Detalle
+                      Detalle
                     </button>
                   </td>
                 </tr>
@@ -199,113 +336,26 @@ const HRDashboard = () => {
             </tbody>
           </table>
         </div>
-      </div>
 
-      {/* MODAL DETALLE RRHH */}
-      {selectedGroup && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
-          <div className="bg-white rounded shadow-xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden">
-            <div className="border-b border-slate-200 px-6 py-4 flex items-center justify-between bg-slate-50">
-              <div className="flex items-center gap-4">
-                <button onClick={closeModal} className="text-slate-400 hover:text-slate-700 transition-colors bg-white border border-slate-200 p-1.5 rounded-sm shadow-sm">
-                  <ChevronLeft size={18} />
-                </button>
-                <div>
-                  <h2 className="text-lg font-bold text-slate-800 leading-tight">Auditoría Nómina Especial</h2>
-                  <p className="text-sm text-slate-500">Empleado: <span className="font-semibold text-slate-700">{selectedGroup.workerName}</span> | Período: <span className="font-mono">{selectedGroup.weekKey}</span></p>
-                </div>
-              </div>
-              <div className="flex items-center gap-4">
-                {/* Etiqueta eliminada por solicitud */}
-              </div>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-6 bg-slate-50/20">
-              <div className="space-y-3">
-                {selectedGroup.entries.map(entry => {
-                  const d = new Date(entry.date);
-                  const isSunday = d.getDay() === 0;
-                  const entryHrs = entry.clockIn && entry.clockOut ? (new Date(entry.clockOut) - new Date(entry.clockIn)) / 3600000 : 0;
-                  const normalHrs = Math.min(entryHrs, 8);
-                  const extraHrs = Math.max(0, entryHrs - 8);
-
-                  return (
-                    <div key={entry.id} className={`bg-white border rounded-sm p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm ${entry.isFestivo ? 'border-purple-200 bg-purple-50/10' : isSunday ? 'border-orange-200 bg-orange-50/10' : 'border-slate-200'}`}>
-                      <div className="flex flex-col gap-1 w-40 shrink-0">
-                        <span className={`font-semibold text-slate-800 capitalize text-[13px] ${entry.isFestivo ? 'text-purple-700' : isSunday ? 'text-orange-700' : ''}`}>
-                          {d.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'short' })}
-                        </span>
-                        {entry.isFestivo && <span className="text-[10px] font-bold text-purple-600 uppercase">Día Festivo</span>}
-                        {isSunday && !entry.isFestivo && <span className="text-[10px] font-bold text-orange-600 uppercase">Día Especial (Dom)</span>}
-                      </div>
-
-                      <div className="flex items-center gap-6">
-                        <div className="text-center hidden sm:block">
-                          <p className="text-[10px] font-semibold text-slate-400 uppercase">Proyecto</p>
-                          <p className="text-[12px] font-mono text-slate-700">{entry.analitica}</p>
-                        </div>
-                        <div className="text-center">
-                          <p className="text-[10px] font-semibold text-slate-400 uppercase">Normales</p>
-                          <p className="text-[12px] font-bold text-slate-700">{normalHrs.toFixed(1)}h</p>
-                        </div>
-                        <div className="text-center">
-                          <p className="text-[10px] font-semibold text-blue-500 uppercase">Extras</p>
-                          {extraHrs > 0 ? (
-                            <p className="text-[12px] font-bold text-blue-700">{extraHrs.toFixed(1)}h</p>
-                          ) : (
-                            <p className="text-[12px] font-bold text-slate-300">--</p>
-                          )}
-                        </div>
-                        <div className="text-center bg-slate-50 px-2 py-1 rounded border border-slate-100">
-                          <p className="text-[10px] font-semibold text-slate-500 uppercase">Total</p>
-                          <p className={`text-[12px] font-bold ${isSunday ? 'text-orange-700' : 'text-slate-800'}`}>{entryHrs.toFixed(1)}h</p>
-                        </div>
-                        <div className="text-center">
-                          <p className="text-[10px] font-semibold text-slate-400 uppercase">Dietas</p>
-                          <p className="text-[12px] font-bold text-green-700">{entry.dieta || 0}</p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-end w-32">
-                        {entry.otImage ? (
-                          <a href={entry.otImage} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-blue-600 hover:underline text-[12px] font-medium">
-                            <FileText size={14} /> Ver Evidencia
-                          </a>
-                        ) : (
-                          <span className="text-[11px] text-slate-400 italic">Sin OT</span>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="border-t border-slate-200 px-6 py-4 bg-white">
-              <div className="flex justify-between items-center bg-slate-50 p-4 rounded border border-slate-200">
-                <div className="flex gap-8">
-                  <div>
-                    <p className="text-[11px] font-bold text-slate-400 uppercase">Suma H. Normales</p>
-                    <p className="text-lg font-bold text-slate-800">{selectedGroup.totalHours.toFixed(1)}</p>
-                  </div>
-                  <div>
-                    <p className="text-[11px] font-bold text-orange-500 uppercase">Suma H. Especiales</p>
-                    <p className="text-lg font-bold text-orange-700">{selectedGroup.specialHours.toFixed(1)}</p>
-                  </div>
-                  <div>
-                    <p className="text-[11px] font-bold text-purple-500 uppercase">Días Festivos</p>
-                    <p className="text-lg font-bold text-purple-700">{selectedGroup.totalFestivos}</p>
-                  </div>
-                  <div>
-                    <p className="text-[11px] font-bold text-green-500 uppercase">Total Dietas</p>
-                    <p className="text-lg font-bold text-green-700">{selectedGroup.totalDietas}</p>
-                  </div>
-                </div>
-                <button onClick={closeModal} className="bg-slate-800 text-white px-6 py-2 rounded-sm text-[13px] font-bold hover:bg-slate-700 transition-colors">Cerrar Auditoría</button>
-              </div>
-            </div>
+        {/* Paginador Inferior */}
+        <div className="flex items-center justify-between px-4 py-4 font-sans text-[13px] border-t border-slate-200 mt-2">
+          <div className="text-slate-500">
+            Showing 1 to {filteredGroups.length} of {filteredGroups.length} rows
+          </div>
+          <div className="flex items-center gap-1">
+            <button className="px-3 py-1.5 border border-slate-300 bg-white text-slate-400 rounded-l-md hover:bg-slate-50 cursor-not-allowed">
+              Previous
+            </button>
+            <button className="px-3 py-1.5 border-t border-b border-r border-blue-600 bg-blue-600 text-white font-medium hover:bg-blue-700">
+              1
+            </button>
+            <button className="px-3 py-1.5 border-t border-b border-r border-slate-300 bg-white text-slate-400 rounded-r-md hover:bg-slate-50 cursor-not-allowed">
+              Next
+            </button>
           </div>
         </div>
+
+      </div>
       )}
     </div>
   );
