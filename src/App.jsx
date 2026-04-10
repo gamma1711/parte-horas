@@ -10,7 +10,7 @@ import HRDashboard from './pages/HR/HRDashboard';
 
 const ProtectedRoute = ({ children, allowedRole }) => {
   const { currentUser } = useData();
-  
+
   if (!currentUser) {
     return <Navigate to="/" replace />;
   }
@@ -19,7 +19,7 @@ const ProtectedRoute = ({ children, allowedRole }) => {
   if (allowedRole && currentUser.role !== allowedRole) {
     return <Navigate to={`/${currentUser.role}`} replace />;
   }
-  
+
   return children;
 };
 
@@ -40,35 +40,35 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<Home />} />
-      <Route 
-        path="/worker" 
+      <Route
+        path="/worker"
         element={
           <ProtectedRoute allowedRole="worker">
             <AppLayout>
               <WorkerDashboard />
             </AppLayout>
           </ProtectedRoute>
-        } 
+        }
       />
-      <Route 
-        path="/manager" 
+      <Route
+        path="/manager"
         element={
           <ProtectedRoute allowedRole="manager">
             <AppLayout>
               <ManagerDashboard />
             </AppLayout>
           </ProtectedRoute>
-        } 
+        }
       />
-      <Route 
-        path="/hr" 
+      <Route
+        path="/hr"
         element={
           <ProtectedRoute allowedRole="hr">
             <AppLayout>
               <HRDashboard />
             </AppLayout>
           </ProtectedRoute>
-        } 
+        }
       />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

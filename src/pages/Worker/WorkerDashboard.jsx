@@ -182,36 +182,12 @@ const WorkerDashboard = () => {
 
       {/* Resumen Semanal y Carga de OT agrupado - Panel NC */}
       <div className="bg-white border border-slate-200 rounded-sm shadow-sm flex flex-col font-sans overflow-hidden">
-        
-        {/* Header con Título y Buscador */}
-        <div className="border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between px-4 py-3 gap-3">
+
+        <div className="border-b border-slate-100 flex flex-col sm:flex-row sm:items-center px-4 py-4 gap-3">
           <h2 className="text-[15px] font-semibold text-slate-800 tracking-tight flex items-center gap-2">
             <FileText size={16} className="text-slate-500" />
-            Mi Historial de Actividades
+            Mi Historial de Actividades <span className="text-slate-400 font-normal ml-1 mr-1">|</span> <span className="font-mono text-[13px] text-slate-500 font-medium">Período: {currentWeek}</span>
           </h2>
-          <div className="relative">
-            <input 
-              type="text" 
-              placeholder="Buscar fecha o proyecto..." 
-              className="text-[13px] border border-slate-300 rounded px-3 py-1.5 w-full sm:w-64 text-slate-700 focus:outline-none focus:border-blue-500"
-            />
-            <Search size={14} className="absolute right-2.5 top-2 text-slate-400" />
-          </div>
-        </div>
-
-        {/* Rows per page */}
-        <div className="px-4 py-3 flex items-center justify-between text-[13px] text-slate-500 border-b border-slate-100">
-           <div className="flex items-center gap-2">
-             <span>Showing últimos registros</span>
-             <div className="flex items-center gap-1.5 ml-2 hidden sm:flex">
-               <select className="border border-slate-300 rounded px-2 py-1 text-slate-700 focus:outline-none bg-white">
-                 <option>25</option>
-                 <option>50</option>
-                 <option>100</option>
-               </select>
-               <span>rows per page</span>
-             </div>
-           </div>
         </div>
 
         <div className="overflow-x-auto">
@@ -220,24 +196,18 @@ const WorkerDashboard = () => {
               No hay registros para mostrar.
             </div>
           ) : (
-            <table className="w-full text-left text-[13px]">
-              <thead className="bg-white border-b border-slate-200">
+            <table className="w-full text-left text-[13px] whitespace-nowrap">
+              <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
                   <th className="px-4 py-3 font-semibold text-slate-800 border-r border-slate-100">Día / Fecha</th>
                   <th className="px-4 py-3 font-semibold text-slate-800 border-r border-slate-100">Proyecto</th>
                   <th className="px-4 py-3 font-semibold text-slate-800 border-r border-slate-100 text-center">Entrada</th>
                   <th className="px-4 py-3 font-semibold text-slate-800 border-r border-slate-100 text-center">Salida</th>
-                  <th className="px-4 py-3 font-semibold text-slate-800 border-r border-slate-100 text-center">Estado</th>
                   <th className="px-4 py-3 font-semibold text-slate-800">Evidencia (OT)</th>
                 </tr>
               </thead>
               <tbody className="bg-white">
                 {groupedList.flatMap((weekGroup) => [
-                  <tr key={`week-${weekGroup.weekKey}`} className="bg-slate-50/80 border-y border-slate-200">
-                    <td colSpan="5" className="px-4 py-2 text-[12px] uppercase text-slate-600 font-bold tracking-wider">
-                      Semana: {weekGroup.weekKey} <span className="ml-4 font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100 normal-case">Total: {weekGroup.totalHours.toFixed(1)} hrs</span>
-                    </td>
-                  </tr>,
                   ...weekGroup.entries.map((entry) => (
                     <tr key={entry.id} className="hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-b-0">
                       <td className="px-4 py-3 border-r border-slate-100">
@@ -254,9 +224,6 @@ const WorkerDashboard = () => {
                       <td className="px-4 py-3 border-r border-slate-100 text-center">
                         <span className="font-mono text-slate-500">{formatTime(entry.clockOut)}</span>
                       </td>
-                      <td className="px-4 py-3 border-r border-slate-100 text-center">
-                        {getStatusBadge(entry.status)}
-                      </td>
                       <td className="px-4 py-3">
                         {entry.otImage ? (
                           <div className="flex items-center gap-3">
@@ -264,7 +231,7 @@ const WorkerDashboard = () => {
                               <img src={entry.otImage} alt="OT" className="w-full h-full object-cover" />
                             </a>
                             <label className="text-[11px] text-blue-600 font-medium hover:underline cursor-pointer flex items-center gap-1 bg-blue-50 px-2 py-1 rounded border border-blue-100">
-                              <ImagePlus size={12}/> Actualizar
+                              <ImagePlus size={12} /> Actualizar
                               <input type="file" accept="image/*" className="hidden" onChange={(e) => handleFileUpload(e, entry.id)} />
                             </label>
                           </div>
@@ -282,19 +249,6 @@ const WorkerDashboard = () => {
             </table>
           )}
         </div>
-
-        {/* Paginador Inferior */}
-        <div className="flex items-center justify-between px-4 py-4 font-sans text-[13px] border-t border-slate-200 mt-2">
-          <div className="text-slate-500">
-            Showing records
-          </div>
-          <div className="flex items-center gap-1">
-            <button className="px-3 py-1.5 border border-slate-300 bg-white text-slate-400 rounded-l-md hover:bg-slate-50 cursor-not-allowed">Previous</button>
-            <button className="px-3 py-1.5 border-t border-b border-r border-blue-600 bg-blue-600 text-white font-medium hover:bg-blue-700">1</button>
-            <button className="px-3 py-1.5 border-t border-b border-r border-slate-300 bg-white text-slate-400 rounded-r-md hover:bg-slate-50 cursor-not-allowed">Next</button>
-          </div>
-        </div>
-
       </div>
 
     </div>
