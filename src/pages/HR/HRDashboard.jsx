@@ -18,6 +18,8 @@ const getWeekRange = (dateString) => {
 const HRDashboard = () => {
   const { timeEntries } = useData();
   const [searchTerm, setSearchTerm] = useState('');
+  const [filterState, setFilterState] = useState('approved');
+  const [filterWeek, setFilterWeek] = useState(getWeekRange(new Date().toISOString()));
 
   // Modal State
   const [selectedGroup, setSelectedGroup] = useState(null);
@@ -51,12 +53,12 @@ const HRDashboard = () => {
 
     if (entry.clockIn && entry.clockOut) {
       const hrs = (new Date(entry.clockOut) - new Date(entry.clockIn)) / 3600000;
-
       const d = new Date(entry.date);
       if (d.getDay() === 0) {
         group.specialHours += hrs;
       } else {
-        group.totalHours += hrs;
+        group.totalHours += Math.min(hrs, 8);
+        group.extraHours += Math.max(0, hrs - 8);
       }
     }
   });
@@ -67,20 +69,37 @@ const HRDashboard = () => {
     if (group.entries.some(e => e.status === 'rejected')) overallStatus = 'rejected';
     else if (group.entries.some(e => e.status === 'pending')) overallStatus = 'pending';
 
-    // Asumimos 40h de jornada normal (sin contar domingos) para RRHH
-    group.extraHours = Math.max(0, group.totalHours - 40);
-
     return { ...group, overallStatus, analiticaJoin: Array.from(group.analiticas).join(', ') || 'N/A' };
   });
 
   const currentWeek = getWeekRange(new Date().toISOString());
 
-  // 3. Filter: solo mostrar la semana actual y aprobados
+  const availableWeeks = Array.from(new Set(groupedList.map(g => g.weekKey))).sort((a, b) => {
+    const parseDate = (str) => {
+      const parts = str.split(' ')[0].split('/'); // DD/MM/YYYY
+      if (parts.length === 3) return new Date(parts[2], parts[1]-1, parts[0]).getTime();
+      return 0;
+    };
+    return parseDate(b) - parseDate(a); // descendente
+  });
+  if (!availableWeeks.includes(currentWeek)) {
+    availableWeeks.unshift(currentWeek);
+  }
+
+  // 3. Filter: aplicar filtros dinámicos
   const filteredGroups = groupedList.filter(g =>
-    g.weekKey === currentWeek &&
-    g.overallStatus === 'approved' &&
+    (filterWeek === 'todas' || g.weekKey === filterWeek) &&
+    (filterState === 'todos' || g.overallStatus === filterState) &&
     (g.workerName.toLowerCase().includes(searchTerm.toLowerCase()) || g.weekKey.toLowerCase().includes(searchTerm.toLowerCase()))
   );
+
+  const getStatusBadge = (status) => {
+    switch (status) {
+      case 'approved': return <span className="font-semibold text-[12px] text-green-700">Aprobado</span>;
+      case 'rejected': return <span className="font-semibold text-[12px] text-red-600">Rechazado</span>;
+      default: return <span className="font-semibold text-[12px] text-orange-600">Pendiente</span>;
+    }
+  };
 
   const formatTime = (isoString) => {
     if (!isoString) return '--:--';
@@ -132,8 +151,8 @@ const HRDashboard = () => {
                     const d = new Date(entry.date);
                     const isSunday = d.getDay() === 0;
                     const entryHrs = entry.clockIn && entry.clockOut ? (new Date(entry.clockOut) - new Date(entry.clockIn)) / 3600000 : 0;
-                    const normalHrs = Math.min(entryHrs, 8);
-                    const extraHrs = Math.max(0, entryHrs - 8);
+                    const normalHrs = isSunday ? 0 : Math.min(entryHrs, 8);
+                    const extraHrs = isSunday ? 0 : Math.max(0, entryHrs - 8);
 
                     return (
                       <tr key={entry.id} className="hover:bg-slate-50 transition-colors">
@@ -163,7 +182,7 @@ const HRDashboard = () => {
                         </td>
                         <td className="px-4 py-3 border-r border-slate-100 text-center">
                           {extraHrs > 0 ? (
-                            <span className="font-bold text-[#b45309] bg-[#fef3c7] px-2 py-0.5 rounded border border-[#fde68a]">
+                            <span className="font-bold text-[#b45309]">
                               {extraHrs.toFixed(1)} h
                             </span>
                           ) : (
@@ -175,7 +194,7 @@ const HRDashboard = () => {
                         </td>
                         <td className="px-4 py-3 border-r border-slate-100 text-center">
                           {entry.dieta > 0 ? (
-                            <span className="font-bold text-green-700 bg-green-50 border border-green-200 px-2 py-0.5 rounded">
+                            <span className="font-bold text-green-700">
                               {entry.dieta}
                             </span>
                           ) : (
@@ -185,9 +204,9 @@ const HRDashboard = () => {
                         <td className="px-4 py-3">
                           {entry.otImage ? (
                             <div className="flex items-center gap-2">
-                              <a 
-                                href={entry.otImage} 
-                                target="_blank" 
+                              <a
+                                href={entry.otImage}
+                                target="_blank"
                                 rel="noreferrer"
                                 className="text-blue-600 hover:text-blue-800 underline text-[12px] font-medium"
                               >
@@ -233,129 +252,128 @@ const HRDashboard = () => {
           </div>
         </div>
       ) : (
-      <div className="bg-white border border-slate-200 rounded-sm shadow-sm flex flex-col flex-1 pb-4 animate-fade-in">
+        <div className="bg-white border border-slate-200 rounded-sm shadow-sm flex flex-col flex-1 pb-4 animate-fade-in">
 
-        {/* Header con Título y Buscador */}
-        <div className="border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between px-4 py-3 gap-3">
-          <h2 className="text-[15px] font-semibold text-slate-800 tracking-tight">Reporte de Nómina Semanal</h2>
-          <div className="relative">
-            <input 
-              type="text" 
-              placeholder="Buscar Empleado o Período..." 
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              className="text-[13px] border border-slate-300 rounded px-3 py-1.5 w-full sm:w-64 text-slate-700 focus:outline-none focus:border-blue-500"
-            />
-            <Search size={14} className="absolute right-2.5 top-2 text-slate-400" />
+          {/* Header con Título y Buscador */}
+          <div className="border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between px-4 py-3 gap-3">
+            <h2 className="text-[15px] font-semibold text-slate-800 tracking-tight">Reporte de Nómina Semanal</h2>
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Buscar Empleado o Período..."
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                className="text-[13px] border border-slate-300 rounded px-3 py-1.5 w-full sm:w-64 text-slate-700 focus:outline-none focus:border-blue-500"
+              />
+              <Search size={14} className="absolute right-2.5 top-2 text-slate-400" />
+            </div>
           </div>
-        </div>
 
-        {/* Rows per page */}
-        <div className="px-4 py-3 flex items-center justify-between text-[13px] text-slate-500 border-b border-slate-100">
-           <div className="flex items-center gap-2">
-             <span>Showing 1 to {filteredGroups.length} of {filteredGroups.length} rows</span>
-             <div className="flex items-center gap-1.5 ml-2 hidden sm:flex">
-               <select className="border border-slate-300 rounded px-2 py-1 text-slate-700 focus:outline-none bg-white">
-                 <option>25</option>
-                 <option>50</option>
-                 <option>100</option>
-               </select>
-               <span>rows per page</span>
-             </div>
-           </div>
-           {/* Removido el Período badge de HR solicitado por el usuario */}
-        </div>
+          {/* Filtros */}
+          <div className="px-4 py-3 flex flex-col sm:flex-row items-start sm:items-center justify-between text-[13px] text-slate-500 border-b border-slate-100 gap-3">
+            <div className="flex flex-wrap items-center gap-4 w-full sm:w-auto">
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-slate-600">Período:</span>
+                <select
+                  className="border border-slate-300 rounded px-2 py-1 text-slate-700 focus:outline-none bg-white max-w-[200px] truncate"
+                  value={filterWeek}
+                  onChange={(e) => setFilterWeek(e.target.value)}
+                >
+                  <option value="todas">Todas las semanas</option>
+                  {availableWeeks.map(w => (
+                    <option key={w} value={w}>{w === currentWeek ? `${w} (Actual)` : w}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-slate-600">Estado:</span>
+                <select
+                  className="border border-slate-300 rounded px-2 py-1 text-slate-700 focus:outline-none bg-white"
+                  value={filterState}
+                  onChange={(e) => setFilterState(e.target.value)}
+                >
+                  <option value="todos">Todos</option>
+                  <option value="pending">Pendientes</option>
+                  <option value="approved">Aprobados</option>
+                  <option value="rejected">Rechazados</option>
+                </select>
+              </div>
+            </div>
+          </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-[13px] whitespace-nowrap">
-            <thead className="border-b-2 border-slate-200 bg-slate-50/50">
-              <tr>
-                <th className="px-4 py-3 font-semibold text-slate-800">Período</th>
-                <th className="px-4 py-3 font-semibold text-slate-800">Empleado</th>
-                <th className="px-4 py-3 font-semibold text-slate-800 text-center">H. Normales</th>
-                <th className="px-4 py-3 font-semibold text-slate-800 text-center text-blue-700">H. Extras</th>
-                <th className="px-4 py-3 font-semibold text-slate-800 text-center text-orange-700">H. Especiales (Dom)</th>
-                <th className="px-4 py-3 font-semibold text-slate-800 text-center text-purple-700">Festivos</th>
-                <th className="px-4 py-3 font-semibold text-slate-800 text-center text-green-700">Dietas</th>
-                <th className="px-4 py-3 font-semibold text-slate-800 text-center">Acciones</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {filteredGroups.map(group => (
-                <tr key={group.id} className="hover:bg-slate-50 transition-colors">
-                  <td className="px-4 py-3 text-slate-800 font-medium flex items-center gap-2">
-                    <Calendar size={14} className="text-slate-400" /> {group.weekKey}
-                  </td>
-                  <td className="px-4 py-3 text-slate-600 font-medium">{group.workerName}</td>
-                  <td className="px-4 py-3 text-center">
-                    <span className="font-semibold text-slate-800">{group.totalHours.toFixed(1)} hrs</span>
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    {group.extraHours > 0 ? (
-                      <span className="font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
-                        {group.extraHours.toFixed(1)} hrs
-                      </span>
-                    ) : (
-                      <span className="text-slate-400">--</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    {group.specialHours > 0 ? (
-                      <span className="font-bold text-orange-700 bg-orange-50 px-2 py-0.5 rounded border border-orange-100">
-                        {group.specialHours.toFixed(1)} hrs
-                      </span>
-                    ) : (
-                      <span className="text-slate-400">--</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-center font-bold text-purple-700">
-                    {group.totalFestivos}
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <span className="font-bold text-green-700 tabular-nums">
-                      {group.totalDietas}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <button
-                      onClick={() => setSelectedGroup(group)}
-                      className="text-blue-600 hover:text-blue-800 underline font-medium text-[13px] transition-colors"
-                    >
-                      Detalle
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {filteredGroups.length === 0 && (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-[13px] whitespace-nowrap">
+              <thead className="border-b-2 border-slate-200 bg-slate-50/50">
                 <tr>
-                  <td colSpan="7" className="px-4 py-8 text-center text-slate-500 text-[13px]">
-                    No hay registros de nómina aprobados para este período.
-                  </td>
+                  <th className="px-4 py-3 font-semibold text-slate-800 border-r border-slate-100">Período</th>
+                  <th className="px-4 py-3 font-semibold text-slate-800 border-r border-slate-100">Empleado</th>
+                  <th className="px-4 py-3 font-semibold text-slate-800 border-r border-slate-100 text-center">H. Normales</th>
+                  <th className="px-4 py-3 font-semibold text-slate-800 border-r border-slate-100 text-center text-blue-700">H. Extras</th>
+                  <th className="px-4 py-3 font-semibold text-slate-800 border-r border-slate-100 text-center text-orange-700">H. Especiales (Dom)</th>
+                  <th className="px-4 py-3 font-semibold text-slate-800 border-r border-slate-100 text-center text-purple-700">Festivos</th>
+                  <th className="px-4 py-3 font-semibold text-slate-800 border-r border-slate-100 text-center text-green-700">Dietas</th>
+                  <th className="px-4 py-3 font-semibold text-slate-800 border-r border-slate-100 text-center">Estado</th>
+                  <th className="px-4 py-3 font-semibold text-slate-800 text-center">Acciones</th>
                 </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Paginador Inferior */}
-        <div className="flex items-center justify-between px-4 py-4 font-sans text-[13px] border-t border-slate-200 mt-2">
-          <div className="text-slate-500">
-            Showing 1 to {filteredGroups.length} of {filteredGroups.length} rows
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filteredGroups.map(group => (
+                  <tr key={group.id} className="hover:bg-slate-50 transition-colors">
+                    <td className="px-4 py-3 text-slate-800 font-medium flex items-center gap-2 border-r border-slate-100">
+                      <Calendar size={14} className="text-slate-400" /> {group.weekKey}
+                    </td>
+                    <td className="px-4 py-3 text-slate-600 font-medium border-r border-slate-100">{group.workerName}</td>
+                    <td className="px-4 py-3 text-center border-r border-slate-100">
+                      <span className="font-semibold text-slate-800">{group.totalHours.toFixed(1)} hrs</span>
+                    </td>
+                    <td className="px-4 py-3 text-center border-r border-slate-100">
+                      {group.extraHours > 0 ? (
+                        <span className="font-bold text-blue-700">
+                          {group.extraHours.toFixed(1)} hrs
+                        </span>
+                      ) : (
+                        <span className="text-slate-400">--</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-center border-r border-slate-100">
+                      {group.specialHours > 0 ? (
+                        <span className="font-bold text-orange-700">
+                          {group.specialHours.toFixed(1)} hrs
+                        </span>
+                      ) : (
+                        <span className="text-slate-400">--</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-center font-bold text-purple-700 border-r border-slate-100">
+                      {group.totalFestivos}
+                    </td>
+                    <td className="px-4 py-3 text-center border-r border-slate-100">
+                      <span className="font-bold text-green-700 tabular-nums">
+                        {group.totalDietas}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-center border-r border-slate-100">{getStatusBadge(group.overallStatus)}</td>
+                    <td className="px-4 py-3 text-center">
+                      <button
+                        onClick={() => setSelectedGroup(group)}
+                        className="text-blue-600 hover:text-blue-800 underline font-medium text-[13px] transition-colors"
+                      >
+                        Detalle
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {filteredGroups.length === 0 && (
+                  <tr>
+                    <td colSpan="8" className="px-4 py-8 text-center text-slate-500 text-[13px]">
+                      No hay registros de nómina para los filtros seleccionados.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
-          <div className="flex items-center gap-1">
-            <button className="px-3 py-1.5 border border-slate-300 bg-white text-slate-400 rounded-l-md hover:bg-slate-50 cursor-not-allowed">
-              Previous
-            </button>
-            <button className="px-3 py-1.5 border-t border-b border-r border-blue-600 bg-blue-600 text-white font-medium hover:bg-blue-700">
-              1
-            </button>
-            <button className="px-3 py-1.5 border-t border-b border-r border-slate-300 bg-white text-slate-400 rounded-r-md hover:bg-slate-50 cursor-not-allowed">
-              Next
-            </button>
-          </div>
         </div>
-
-      </div>
       )}
     </div>
   );

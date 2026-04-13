@@ -19,6 +19,7 @@ const ManagerDashboard = () => {
   const { timeEntries, approveWeek } = useData();
   const [filterState, setFilterState] = useState('pending');
   const [searchTerm, setSearchTerm] = useState('');
+  const [filterWeek, setFilterWeek] = useState(getWeekRange(new Date().toISOString()));
 
   // Modal State
   const [selectedGroup, setSelectedGroup] = useState(null);
@@ -56,7 +57,13 @@ const ManagerDashboard = () => {
 
     if (entry.clockIn && entry.clockOut) {
       const hrs = (new Date(entry.clockOut) - new Date(entry.clockIn)) / 3600000;
-      group.totalHours += hrs;
+      const d = new Date(entry.date);
+      if (d.getDay() === 0) {
+        group.specialHours += hrs;
+      } else {
+        group.totalHours += Math.min(hrs, 8);
+        group.extraHours += Math.max(0, hrs - 8);
+      }
     }
   });
 
@@ -65,25 +72,35 @@ const ManagerDashboard = () => {
     let overallStatus = 'approved';
     if (group.entries.some(e => e.status === 'rejected')) overallStatus = 'rejected';
     else if (group.entries.some(e => e.status === 'pending')) overallStatus = 'pending';
-
-    group.extraHours = Math.max(0, group.totalHours - 48); // Asumiendo 48h base
     return { ...group, overallStatus, analiticaJoin: Array.from(group.analiticas).join(', ') || 'N/A' };
   });
 
   const currentWeek = getWeekRange(new Date().toISOString());
 
+  const availableWeeks = Array.from(new Set(groupedList.map(g => g.weekKey))).sort((a, b) => {
+    const parseDate = (str) => {
+      const parts = str.split(' ')[0].split('/'); // DD/MM/YYYY
+      if (parts.length === 3) return new Date(parts[2], parts[1]-1, parts[0]).getTime();
+      return 0;
+    };
+    return parseDate(b) - parseDate(a); // descendente
+  });
+  if (!availableWeeks.includes(currentWeek)) {
+    availableWeeks.unshift(currentWeek);
+  }
+
   // 3. Filter
   const filteredGroups = groupedList.filter(g =>
-    g.weekKey === currentWeek && // Solo semana actual por solicitud
+    (filterWeek === 'todas' || g.weekKey === filterWeek) &&
     (filterState === 'todos' || g.overallStatus === filterState) &&
     (g.workerName.toLowerCase().includes(searchTerm.toLowerCase()) || g.weekKey.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   const getStatusBadge = (status) => {
     switch (status) {
-      case 'approved': return <span className="inline-block px-2 py-0.5 rounded text-[11px] font-bold bg-[#dcfce7] text-[#166534] border border-[#bbf7d0]">Aprobado</span>;
-      case 'rejected': return <span className="inline-block px-2 py-0.5 rounded text-[11px] font-bold bg-[#fee2e2] text-[#991b1b] border border-[#fecaca]">Rechazado</span>;
-      default: return <span className="inline-block px-2 py-0.5 rounded text-[11px] font-bold bg-[#fef3c7] text-[#92400e] border border-[#fde68a]">Pendiente</span>;
+      case 'approved': return <span className="font-semibold text-[12px] text-green-700">Aprobado</span>;
+      case 'rejected': return <span className="font-semibold text-[12px] text-red-600">Rechazado</span>;
+      default: return <span className="font-semibold text-[12px] text-orange-600">Pendiente</span>;
     }
   };
 
@@ -180,10 +197,12 @@ const ManagerDashboard = () => {
                     let dayHrs = 0;
                     let normalHrs = 0;
                     let extraHrs = 0;
+                    const d = new Date(entry.date);
+                    const isSunday = d.getDay() === 0;
                     if (entry.clockIn && entry.clockOut) {
                       dayHrs = (new Date(entry.clockOut) - new Date(entry.clockIn)) / 3600000;
-                      normalHrs = Math.min(dayHrs, 8);
-                      extraHrs = Math.max(0, dayHrs - 8);
+                      normalHrs = isSunday ? 0 : Math.min(dayHrs, 8);
+                      extraHrs = isSunday ? 0 : Math.max(0, dayHrs - 8);
                     }
 
                     return (
@@ -196,6 +215,7 @@ const ManagerDashboard = () => {
                             </span>
                           </div>
                           {entry.isFestivo && <span className="text-[10px] font-bold text-purple-600 uppercase mt-1 block">Día Festivo</span>}
+                          {isSunday && !entry.isFestivo && <span className="text-[10px] font-bold text-orange-600 uppercase mt-1 block">Día Especial (Dom)</span>}
                         </td>
                         <td className="px-4 py-3 text-slate-500 border-r border-slate-100">
                           {entry.analitica || 'N/A'}
@@ -211,7 +231,7 @@ const ManagerDashboard = () => {
                         </td>
                         <td className="px-4 py-3 border-r border-slate-100 text-center">
                           {extraHrs > 0 ? (
-                            <span className="font-bold text-[#b45309] bg-[#fef3c7] px-2 py-0.5 rounded border border-[#fde68a]">
+                            <span className="font-bold text-[#b45309]">
                               {extraHrs.toFixed(1)} h
                             </span>
                           ) : (
@@ -297,19 +317,34 @@ const ManagerDashboard = () => {
           </div>
 
           {/* Rows per page y Filtro Extra */}
-          <div className="px-4 py-3 flex items-center justify-between text-[13px] text-slate-500 border-b border-slate-100">
-            <div className="flex items-center gap-2">
-              <span className="font-medium text-slate-600">Estado:</span>
-              <select
-                className="border border-slate-300 rounded px-2 py-1 text-slate-700 focus:outline-none bg-white"
-                value={filterState}
-                onChange={(e) => setFilterState(e.target.value)}
-              >
-                <option value="todos">Todos</option>
-                <option value="pending">Pendientes</option>
-                <option value="approved">Aprobados</option>
-                <option value="rejected">Rechazados</option>
-              </select>
+          <div className="px-4 py-3 flex flex-col sm:flex-row items-start sm:items-center justify-between text-[13px] text-slate-500 border-b border-slate-100 gap-3">
+            <div className="flex flex-wrap items-center gap-4 w-full sm:w-auto">
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-slate-600">Período:</span>
+                <select
+                  className="border border-slate-300 rounded px-2 py-1 text-slate-700 focus:outline-none bg-white max-w-[200px] truncate"
+                  value={filterWeek}
+                  onChange={(e) => setFilterWeek(e.target.value)}
+                >
+                  <option value="todas">Todas las semanas</option>
+                  {availableWeeks.map(w => (
+                    <option key={w} value={w}>{w === currentWeek ? `${w} (Actual)` : w}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-slate-600">Estado:</span>
+                <select
+                  className="border border-slate-300 rounded px-2 py-1 text-slate-700 focus:outline-none bg-white"
+                  value={filterState}
+                  onChange={(e) => setFilterState(e.target.value)}
+                >
+                  <option value="todos">Todos</option>
+                  <option value="pending">Pendientes</option>
+                  <option value="approved">Aprobados</option>
+                  <option value="rejected">Rechazados</option>
+                </select>
+              </div>
             </div>
           </div>
 
@@ -317,50 +352,50 @@ const ManagerDashboard = () => {
             <table className="w-full text-left text-[13px] whitespace-nowrap">
               <thead className="border-b-2 border-slate-200 bg-slate-50/50">
                 <tr>
-                  <th className="px-4 py-3 font-semibold text-slate-800">Período (Semana)</th>
-                  <th className="px-4 py-3 font-semibold text-slate-800">Empleado</th>
-                  <th className="px-4 py-3 font-semibold text-slate-800">Analítica</th>
-                  <th className="px-4 py-3 font-semibold text-slate-800 text-center">H. Normales</th>
-                  <th className="px-4 py-3 font-semibold text-slate-800 text-center text-blue-700">H. Extras</th>
-                  <th className="px-4 py-3 font-semibold text-slate-800 text-center text-orange-600">H. Especiales (Dom)</th>
-                  <th className="px-4 py-3 font-semibold text-slate-800 text-center text-purple-700">Festivos</th>
-                  <th className="px-4 py-3 font-semibold text-slate-800">Estado</th>
+                  <th className="px-4 py-3 font-semibold text-slate-800 border-r border-slate-100">Período (Semana)</th>
+                  <th className="px-4 py-3 font-semibold text-slate-800 border-r border-slate-100">Empleado</th>
+                  <th className="px-4 py-3 font-semibold text-slate-800 border-r border-slate-100">Analítica</th>
+                  <th className="px-4 py-3 font-semibold text-slate-800 border-r border-slate-100 text-center">H. Normales</th>
+                  <th className="px-4 py-3 font-semibold text-slate-800 border-r border-slate-100 text-center text-blue-700">H. Extras</th>
+                  <th className="px-4 py-3 font-semibold text-slate-800 border-r border-slate-100 text-center text-orange-600">H. Especiales (Dom)</th>
+                  <th className="px-4 py-3 font-semibold text-slate-800 border-r border-slate-100 text-center text-purple-700">Festivos</th>
+                  <th className="px-4 py-3 font-semibold text-slate-800 border-r border-slate-100">Estado</th>
                   <th className="px-4 py-3 font-semibold text-slate-800">Detalles</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filteredGroups.map(group => (
                   <tr key={group.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-4 py-3 text-slate-800 font-medium flex items-center gap-2">
+                    <td className="px-4 py-3 text-slate-800 font-medium flex items-center gap-2 border-r border-slate-100">
                       <Calendar size={14} className="text-slate-400" /> {group.weekKey}
                     </td>
-                    <td className="px-4 py-3 text-slate-600 font-medium">{group.workerName}</td>
-                    <td className="px-4 py-3 text-slate-500 font-mono text-[12px]">{group.analiticaJoin}</td>
-                    <td className="px-4 py-3 text-center">
+                    <td className="px-4 py-3 text-slate-600 font-medium border-r border-slate-100">{group.workerName}</td>
+                    <td className="px-4 py-3 text-slate-500 font-mono text-[12px] border-r border-slate-100">{group.analiticaJoin}</td>
+                    <td className="px-4 py-3 text-center border-r border-slate-100">
                       <span className="font-semibold text-slate-800">{group.totalHours.toFixed(1)} hrs</span>
                     </td>
-                    <td className="px-4 py-3 text-center">
+                    <td className="px-4 py-3 text-center border-r border-slate-100">
                       {group.extraHours > 0 ? (
-                        <span className="font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
+                        <span className="font-bold text-blue-700">
                           {group.extraHours.toFixed(1)} hrs
                         </span>
                       ) : (
                         <span className="text-slate-400">--</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-center">
+                    <td className="px-4 py-3 text-center border-r border-slate-100">
                       {group.specialHours > 0 ? (
-                        <span className="font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded border border-orange-100">
+                        <span className="font-bold text-orange-600">
                           {group.specialHours.toFixed(1)} hrs
                         </span>
                       ) : (
                         <span className="text-slate-400">--</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-center font-bold text-purple-700">
+                    <td className="px-4 py-3 text-center font-bold text-purple-700 border-r border-slate-100">
                       {group.totalFestivos || 0}
                     </td>
-                    <td className="px-4 py-3">{getStatusBadge(group.overallStatus)}</td>
+                    <td className="px-4 py-3 border-r border-slate-100">{getStatusBadge(group.overallStatus)}</td>
                     <td className="px-4 py-3">
                       <button
                         onClick={() => setSelectedGroup(group)}

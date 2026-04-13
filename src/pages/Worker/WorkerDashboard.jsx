@@ -84,9 +84,9 @@ const WorkerDashboard = () => {
 
   const getStatusBadge = (status) => {
     switch (status) {
-      case 'approved': return <span className="inline-block px-2 py-0.5 rounded text-[11px] font-bold bg-[#dcfce7] text-[#166534] border border-[#bbf7d0]">Validado</span>;
-      case 'rejected': return <span className="inline-block px-2 py-0.5 rounded text-[11px] font-bold bg-[#fee2e2] text-[#991b1b] border border-[#fecaca]">Rechazado</span>;
-      default: return <span className="inline-block px-2 py-0.5 rounded text-[11px] font-bold bg-[#fef3c7] text-[#92400e] border border-[#fde68a]">Pendiente</span>;
+      case 'approved': return <span className="font-semibold text-[12px] text-green-700">Validado</span>;
+      case 'rejected': return <span className="font-semibold text-[12px] text-red-600">Rechazado</span>;
+      default: return <span className="font-semibold text-[12px] text-orange-600">Pendiente</span>;
     }
   };
 

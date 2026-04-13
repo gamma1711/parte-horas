@@ -80,3 +80,31 @@ INSERT INTO users (id, name, role) VALUES
     ('33333333-3333-3333-3333-333333333333', 'Carlos López (RRHH)', 'hr'),
     ('44444444-4444-4444-4444-444444444444', 'María García (Trabajador)', 'worker'),
     ('55555555-5555-5555-5555-555555555555', 'Luis Hernández (Trabajador)', 'worker');
+
+-- ==========================================
+-- 6. REGISTROS DE PRUEBA (DIFERENTES PERIODOS Y ESTADOS)
+-- ==========================================
+
+-- Semana 1: (Marzo 23-29, 2026) - Semana pasada profunda - Aprobados
+INSERT INTO time_entries (worker_id, date, clock_in, clock_out, status, analitica, dieta, is_festivo) VALUES
+('11111111-1111-1111-1111-111111111111', '2026-03-23', '2026-03-23 08:00:00Z', '2026-03-23 18:00:00Z', 'approved', 'PROY-A', 1, false),
+('11111111-1111-1111-1111-111111111111', '2026-03-24', '2026-03-24 08:00:00Z', '2026-03-24 18:30:00Z', 'approved', 'PROY-A', 0, false),
+('44444444-4444-4444-4444-444444444444', '2026-03-25', '2026-03-25 09:00:00Z', '2026-03-25 17:00:00Z', 'approved', 'PROY-B', 1, false);
+
+-- Semana 2: (Marzo 30 - Abril 05, 2026) - Rechazados y Pendientes
+INSERT INTO time_entries (worker_id, date, clock_in, clock_out, status, comments, analitica, dieta, is_festivo) VALUES
+('11111111-1111-1111-1111-111111111111', '2026-03-30', '2026-03-30 08:00:00Z', '2026-03-30 16:00:00Z', 'rejected', 'Falta subir comprobantes y evidencias correspondientes a las obras', 'PROY-C', 0, false),
+('55555555-5555-5555-5555-555555555555', '2026-03-31', '2026-03-31 08:30:00Z', '2026-03-31 17:30:00Z', 'pending', NULL, 'PROY-A', 0, false),
+('44444444-4444-4444-4444-444444444444', '2026-04-05', '2026-04-05 08:00:00Z', '2026-04-05 14:00:00Z', 'approved', NULL, 'PROY-D', 0, false); -- Trabajó en Domingo
+
+-- Semana 3: (Abril 06 - 12, 2026) - Aprobados con horas extras y festivos
+INSERT INTO time_entries (worker_id, date, clock_in, clock_out, status, analitica, dieta, is_festivo) VALUES
+('11111111-1111-1111-1111-111111111111', '2026-04-06', '2026-04-06 08:00:00Z', '2026-04-06 20:00:00Z', 'approved', 'PROY-A', 2, false),
+('55555555-5555-5555-5555-555555555555', '2026-04-07', '2026-04-07 08:00:00Z', '2026-04-07 16:00:00Z', 'approved', 'PROY-C', 0, true),
+('44444444-4444-4444-4444-444444444444', '2026-04-10', '2026-04-10 09:00:00Z', '2026-04-10 18:00:00Z', 'approved', 'PROY-B', 1, false);
+
+-- Semana Actual: (Abril 13 - 19, 2026) - Registros actuales mayormente pendientes
+INSERT INTO time_entries (worker_id, date, clock_in, clock_out, status, analitica, dieta, is_festivo) VALUES
+('11111111-1111-1111-1111-111111111111', '2026-04-13', '2026-04-13 08:00:00Z', '2026-04-13 17:00:00Z', 'pending', 'PROY-A', 0, false),
+('55555555-5555-5555-5555-555555555555', '2026-04-13', '2026-04-13 09:00:00Z', '2026-04-13 18:00:00Z', 'pending', 'PROY-C', 1, false),
+('44444444-4444-4444-4444-444444444444', '2026-04-14', '2026-04-14 08:30:00Z', '2026-04-14 14:00:00Z', 'pending', 'PROY-C', 0, false);
