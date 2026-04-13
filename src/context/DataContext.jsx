@@ -47,7 +47,11 @@ export const DataProvider = ({ children }) => {
         otImage: e.ot_image_url,
         analitica: e.analitica || 'N/A',
         dieta: e.dieta || 0,
-        isFestivo: e.is_festivo
+        isFestivo: e.is_festivo,
+        clockInLat: e.clock_in_lat,
+        clockInLng: e.clock_in_lng,
+        clockOutLat: e.clock_out_lat,
+        clockOutLng: e.clock_out_lng
       }));
       setTimeEntries(formattedEntries);
     } else {
@@ -71,7 +75,7 @@ export const DataProvider = ({ children }) => {
     setCurrentUser(null);
   };
 
-  const clockIn = async (explicitDate, analitica = 'N/A', dieta = 0) => {
+  const clockIn = async (explicitDate, analitica = 'N/A', dieta = 0, coords = null) => {
     if (!currentUser) return;
     const now = explicitDate ? new Date(explicitDate) : new Date();
     const dateStr = now.toISOString().split('T')[0];
@@ -83,7 +87,9 @@ export const DataProvider = ({ children }) => {
       status: 'pending',
       analitica,
       dieta,
-      is_festivo: isHoliday(dateStr)
+      is_festivo: isHoliday(dateStr),
+      clock_in_lat: coords?.lat || null,
+      clock_in_lng: coords?.lng || null
     };
     
     const { data, error } = await supabase.from('time_entries').insert([newEntry]).select('*, users(name)').single();
@@ -103,18 +109,28 @@ export const DataProvider = ({ children }) => {
           otImage: data.ot_image_url,
           analitica: data.analitica || 'N/A',
           dieta: data.dieta || 0,
-          isFestivo: data.is_festivo
+          isFestivo: data.is_festivo,
+          clockInLat: data.clock_in_lat,
+          clockInLng: data.clock_in_lng,
+          clockOutLat: data.clock_out_lat,
+          clockOutLng: data.clock_out_lng
         };
         setTimeEntries([formatted, ...timeEntries]);
     }
   };
 
-  const clockOut = async (entryId, explicitDate) => {
+  const clockOut = async (entryId, explicitDate, coords = null) => {
     const now = explicitDate ? new Date(explicitDate) : new Date();
+    
+    const updateData = {
+      clock_out: now.toISOString(),
+      clock_out_lat: coords?.lat || null,
+      clock_out_lng: coords?.lng || null
+    };
     
     const { data, error } = await supabase
         .from('time_entries')
-        .update({ clock_out: now.toISOString() })
+        .update(updateData)
         .eq('id', entryId)
         .select()
         .single();
@@ -125,7 +141,7 @@ export const DataProvider = ({ children }) => {
     } else if (data) {
        setTimeEntries(entries => 
          entries.map(entry => 
-           entry.id === entryId ? { ...entry, clockOut: data.clock_out } : entry
+           entry.id === entryId ? { ...entry, clockOut: data.clock_out, clockOutLat: data.clock_out_lat, clockOutLng: data.clock_out_lng } : entry
          )
        );
     }
@@ -204,6 +220,24 @@ export const DataProvider = ({ children }) => {
       }
   };
 
+  const updateEntryAnalitica = async (entryId, newAnalitica) => {
+    const { error } = await supabase
+      .from('time_entries')
+      .update({ analitica: newAnalitica })
+      .eq('id', entryId);
+
+    if (!error) {
+      setTimeEntries(entries =>
+        entries.map(entry =>
+          entry.id === entryId ? { ...entry, analitica: newAnalitica } : entry
+        )
+      );
+    } else {
+      console.error("Error actualizando analítica:", error);
+      alert("Error al actualizar analítica: " + error.message);
+    }
+  };
+
   return (
     <DataContext.Provider
       value={{
@@ -217,6 +251,7 @@ export const DataProvider = ({ children }) => {
         updateEntryStatus,
         approveWeek,
         uploadOT,
+        updateEntryAnalitica,
         loading
       }}
     >

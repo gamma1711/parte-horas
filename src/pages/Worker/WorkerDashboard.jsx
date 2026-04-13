@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useData } from '../../context/DataContext';
-import { Clock, CheckCircle, ImagePlus, Check, FileText, CreditCard, Search } from 'lucide-react';
+import { Clock, CheckCircle, ImagePlus, Check, LogIn, LogOut, Search } from 'lucide-react';
 
 const getWeekRange = (dateString) => {
   const d = new Date(dateString);
@@ -27,51 +27,74 @@ const WorkerDashboard = () => {
 
   const myEntries = timeEntries.filter(entry => entry.workerId === currentUser.id);
   const todayEntry = myEntries.find(entry => entry.date === new Date().toISOString().split('T')[0]);
-
   const isWorking = todayEntry && !todayEntry.clockOut;
-
   const currentWeek = getWeekRange(new Date().toISOString());
 
-  // Agrupar historial por semana
-  const weeklyGroups = {};
-  myEntries.forEach(entry => {
-    const week = getWeekRange(entry.date);
-    if (!weeklyGroups[week]) {
-      weeklyGroups[week] = {
-        weekKey: week,
-        entries: [],
-        totalHours: 0,
-        totalDietas: 0,
-        analiticas: new Set()
-      };
-    }
-    const g = weeklyGroups[week];
-    g.entries.push(entry);
-    if (entry.analitica && entry.analitica !== 'N/A') g.analiticas.add(entry.analitica);
-    if (entry.dieta) g.totalDietas = 1; // Máximo 1 por semana
+  // Lista fija de analíticas del proyecto
+  const ANALITICAS = [
+    'MX0010000','MX0011000','MX0012000','MX0013000','MX0014000','MX0015000',
+    'MX0016000','MX0017000','MX0020000','MX0031000','MX0032000','MX0057400',
+    'MX0078800','MX0081400','MX0085600','MX0090100','MX0091600','MX0093100',
+    'MX0094200','MX0096100','MX0096200','MX0096300','MX0097100','MX0097200',
+    'MX0097300','MX0098400','MX00OYMPA','MX00REPEJ'
+  ];
 
-    if (entry.clockIn && entry.clockOut) {
-      g.totalHours += (new Date(entry.clockOut) - new Date(entry.clockIn)) / 3600000;
-    }
-  });
+  // Combobox state
+  const [comboSearch, setComboSearch] = useState('');
+  const [comboOpen, setComboOpen] = useState(false);
+  const comboRef = useRef(null);
 
-  // Mostrar todo el historial disponible ordenado por semana descendente
-  const groupedList = Object.values(weeklyGroups)
-    .sort((a, b) => b.weekKey.localeCompare(a.weekKey));
+  const filteredAnaliticas = ANALITICAS.filter(a =>
+    a.toLowerCase().includes(comboSearch.toLowerCase())
+  );
 
-  // Verificar si ya tiene una dieta aplicada en la semana actual
-  const currentWeekObj = weeklyGroups[currentWeek];
-  const weekHasDieta = currentWeekObj && currentWeekObj.entries.some(e => e.dieta === 1);
+  // Cerrar dropdown al hacer click fuera
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (comboRef.current && !comboRef.current.contains(e.target)) {
+        setComboOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
-  const handleAction = () => {
-    if (!todayEntry) {
-      if (!analitica.trim()) {
-        alert("Por favor ingrese la Analítica (Homoclave) del proyecto.");
+  // Solo entradas de la semana actual
+  const currentWeekEntries = myEntries.filter(entry => getWeekRange(entry.date) === currentWeek);
+  const weekHasDieta = currentWeekEntries.some(e => e.dieta === 1);
+
+  const [locating, setLocating] = useState(false);
+
+  // Obtener ubicación del dispositivo
+  const getLocation = () => {
+    return new Promise((resolve) => {
+      if (!navigator.geolocation) {
+        resolve(null);
         return;
       }
-      clockIn(null, analitica, hasDieta ? 1 : 0);
+      navigator.geolocation.getCurrentPosition(
+        (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        () => resolve(null), // Si el usuario deniega, continuar sin ubicación
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      );
+    });
+  };
+
+  const handleAction = async () => {
+    if (!todayEntry) {
+      if (!analitica.trim()) {
+        alert("Por favor seleccione la Analítica del proyecto.");
+        return;
+      }
+      setLocating(true);
+      const coords = await getLocation();
+      await clockIn(null, analitica, hasDieta ? 1 : 0, coords);
+      setLocating(false);
     } else if (isWorking) {
-      clockOut(todayEntry.id, null);
+      setLocating(true);
+      const coords = await getLocation();
+      await clockOut(todayEntry.id, null, coords);
+      setLocating(false);
     }
   };
 
@@ -82,173 +105,207 @@ const WorkerDashboard = () => {
     }
   };
 
-  const getStatusBadge = (status) => {
-    switch (status) {
-      case 'approved': return <span className="font-semibold text-[12px] text-green-700">Validado</span>;
-      case 'rejected': return <span className="font-semibold text-[12px] text-red-600">Rechazado</span>;
-      default: return <span className="font-semibold text-[12px] text-orange-600">Pendiente</span>;
-    }
-  };
-
   const formatTime = (isoString) => {
     if (!isoString) return '--:--';
     return new Date(isoString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
   return (
-    <div className="flex flex-col mx-auto max-w-2xl w-full gap-6 pb-12">
+    <div className="flex flex-col mx-auto max-w-3xl w-full pb-12">
 
-      {/* Panel de Registro (Reloj) */}
-      <div className="bg-white border border-slate-200 rounded-sm shadow-sm flex flex-col p-6 font-sans">
-        <h2 className="text-base font-semibold text-slate-800 border-b border-slate-100 pb-3 mb-6 flex items-center gap-2">
-          <Clock size={16} className="text-slate-500" />
-          Registro de Jornada
-        </h2>
+      {/* ====== RELOJ CENTRAL ====== */}
+      <div className="flex flex-col items-center pt-6 pb-8">
 
-        <div className="flex flex-col items-center mb-8">
-          <span className="text-[11px] font-semibold text-slate-400 tracking-wide uppercase mb-1">
-            Hora Actual Registrada
-          </span>
+        {/* Fecha */}
+        <p className="text-[13px] text-slate-400 mb-2 capitalize">
+          {currentTime.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+        </p>
 
-          <div className="text-4xl font-bold text-slate-800 tabular-nums my-2">
-            {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}
+        {/* Reloj grande */}
+        <div className="text-[64px] font-light text-slate-800 tabular-nums leading-none tracking-tight mb-1">
+          {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}
+        </div>
+        <span className="text-[28px] font-light text-slate-300 tabular-nums">
+          :{String(currentTime.getSeconds()).padStart(2, '0')}
+        </span>
+
+        {/* Estado actual */}
+        {todayEntry && isWorking && (
+          <div className="mt-3 flex items-center gap-2 text-[13px] text-[#0e7490] font-medium">
+            <span className="w-2 h-2 rounded-full bg-[#0e7490] animate-pulse"></span>
+            Turno activo desde {new Date(todayEntry.clockIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </div>
+        )}
+        {todayEntry && !isWorking && (
+          <div className="mt-3 flex items-center gap-2 text-[13px] text-slate-500">
+            <CheckCircle size={14} className="text-slate-400" />
+            Jornada completada ({formatTime(todayEntry.clockIn)} – {formatTime(todayEntry.clockOut)})
+          </div>
+        )}
 
-          <p className="text-[12px] text-slate-500">
-            {currentTime.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-          </p>
-        </div>
+        {/* ====== CONTROLES ====== */}
+        {!todayEntry ? (
+          <div className="mt-6 flex flex-col items-center gap-4 w-full max-w-xs">
 
-        <div className="border-t border-slate-100 pt-5 mt-auto">
-          {!todayEntry ? (
-            <div className="flex flex-col gap-3">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[12px] font-semibold text-slate-600">Analítica (Homoclave Proyecto):</label>
-                <input
-                  type="text"
-                  value={analitica}
-                  onChange={(e) => setAnalitica(e.target.value)}
-                  placeholder="Ej. PRJ-2024-OX"
-                  className="w-full text-[13px] border border-slate-300 rounded px-3 py-2 text-slate-700 focus:outline-none focus:border-blue-500 bg-slate-50"
-                  required
-                />
+            {/* Selector de analítica buscable */}
+            <div className="w-full" ref={comboRef}>
+              <label className="text-[11px] text-slate-400 uppercase tracking-wider font-medium mb-1 block">Analítica</label>
+              <div className="relative">
+                <div className="flex items-center border border-slate-200 bg-white focus-within:border-[#0e7490] transition-colors">
+                  <Search size={14} className="text-slate-400 ml-3 flex-shrink-0" />
+                  <input
+                    type="text"
+                    value={comboOpen ? comboSearch : analitica || comboSearch}
+                    onChange={(e) => {
+                      setComboSearch(e.target.value);
+                      setAnalitica('');
+                      setComboOpen(true);
+                    }}
+                    onFocus={() => setComboOpen(true)}
+                    placeholder="Buscar analítica..."
+                    className="w-full bg-transparent text-slate-800 text-[14px] px-2 py-2.5 focus:outline-none"
+                  />
+                  {analitica && (
+                    <button
+                      onClick={() => { setAnalitica(''); setComboSearch(''); }}
+                      className="text-slate-400 hover:text-slate-600 pr-3 flex-shrink-0"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+                {comboOpen && (
+                  <div className="absolute z-20 mt-px w-full bg-white border border-slate-200 shadow-lg max-h-[200px] overflow-y-auto">
+                    {filteredAnaliticas.length === 0 ? (
+                      <div className="px-3 py-2 text-[13px] text-slate-400">Sin resultados</div>
+                    ) : (
+                      filteredAnaliticas.map(a => (
+                        <button
+                          key={a}
+                          onClick={() => {
+                            setAnalitica(a);
+                            setComboSearch(a);
+                            setComboOpen(false);
+                          }}
+                          className={`w-full text-left px-3 py-2 text-[13px] hover:bg-slate-50 transition-colors ${
+                            analitica === a ? 'bg-slate-100 font-medium text-[#0e7490]' : 'text-slate-700'
+                          }`}
+                        >
+                          {a}
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )}
               </div>
-              <div className="flex items-center gap-2 py-1 px-3 bg-slate-50 border border-slate-200 rounded-sm">
-                <input
-                  type="checkbox"
-                  id="dieta"
-                  checked={hasDieta || weekHasDieta}
-                  disabled={weekHasDieta}
-                  onChange={(e) => setHasDieta(e.target.checked)}
-                  className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300 disabled:opacity-50"
-                />
-                <label htmlFor="dieta" className={`text-[13px] font-medium cursor-pointer select-none ${weekHasDieta ? 'text-slate-400' : 'text-slate-700'}`}>
-                  {weekHasDieta ? 'Dieta semanal ya aplicada' : '¿Aplicar Dieta?'}
-                </label>
-              </div>
-              <button
-                onClick={handleAction}
-                className="w-full flex items-center justify-center bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white p-3 rounded-sm font-semibold text-[14px] transition-colors shadow-sm mt-1"
-              >
-                Registrar Entrada
-              </button>
             </div>
-          ) : isWorking ? (
-            <div className="flex flex-col gap-3">
-              <div className="flex items-center justify-between bg-[#dcfce7] border border-[#bbf7d0] text-[#166534] px-4 py-2.5 rounded-sm text-[13px] font-medium">
-                <span className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-                  Turno Activo
-                </span>
-                <span className="font-mono bg-white/60 px-2 py-0.5 rounded border border-green-200/50">
-                  IN: {new Date(todayEntry.clockIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </span>
-              </div>
-              <button
-                onClick={handleAction}
-                className="w-full flex items-center justify-center border border-slate-300 bg-white hover:bg-slate-50 text-slate-800 p-3 rounded-sm font-semibold text-[14px] transition-colors shadow-[0_1px_2px_rgba(0,0,0,0.05)]"
-              >
-                Registrar Salida
-              </button>
+
+            {/* Dieta checkbox */}
+            <div className="w-full flex items-center gap-2.5 py-1">
+              <input
+                type="checkbox"
+                id="dieta"
+                checked={hasDieta || weekHasDieta}
+                disabled={weekHasDieta}
+                onChange={(e) => setHasDieta(e.target.checked)}
+                className="w-4 h-4 text-[#0e7490] border-slate-300 rounded-sm"
+              />
+              <label htmlFor="dieta" className={`text-[13px] select-none cursor-pointer ${weekHasDieta ? 'text-slate-400' : 'text-slate-600'}`}>
+                {weekHasDieta ? 'Dieta semanal ya aplicada' : 'Aplicar dieta'}
+              </label>
             </div>
-          ) : (
-            <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-sm text-slate-600 flex flex-col items-center gap-1">
-              <CheckCircle size={24} className="text-green-600 mb-1" />
-              <span className="font-semibold text-[13px]">Jornada Reportada Correctamente</span>
-            </div>
-          )}
-        </div>
+
+            {/* Botón de entrada */}
+            <button
+              onClick={handleAction}
+              disabled={locating}
+              className="w-full flex items-center justify-center gap-2 bg-[#0e7490] hover:bg-[#0c5f73] disabled:bg-slate-400 text-white py-3.5 text-[15px] font-medium transition-colors mt-1"
+            >
+              {locating ? (
+                <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span> Obteniendo ubicación...</>
+              ) : (
+                <><LogIn size={18} /> Registrar Entrada</>
+              )}
+            </button>
+          </div>
+        ) : isWorking ? (
+          <div className="mt-6 w-full max-w-xs">
+            <button
+              onClick={handleAction}
+              disabled={locating}
+              className="w-full flex items-center justify-center gap-2 bg-slate-700 hover:bg-slate-800 disabled:bg-slate-400 text-white py-3.5 text-[15px] font-medium transition-colors"
+            >
+              {locating ? (
+                <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span> Obteniendo ubicación...</>
+              ) : (
+                <><LogOut size={18} /> Registrar Salida</>
+              )}
+            </button>
+          </div>
+        ) : null}
+
       </div>
 
-      {/* Resumen Semanal y Carga de OT agrupado - Panel NC */}
-      <div className="bg-white border border-slate-200 rounded-sm shadow-sm flex flex-col font-sans overflow-hidden">
+      {/* ====== SEPARADOR ====== */}
+      <div className="border-t border-slate-200 mb-0"></div>
 
-        <div className="border-b border-slate-100 flex flex-col sm:flex-row sm:items-center px-4 py-4 gap-3">
-          <h2 className="text-[15px] font-semibold text-slate-800 tracking-tight flex items-center gap-2">
-            <FileText size={16} className="text-slate-500" />
-            Mi Historial de Actividades <span className="text-slate-400 font-normal ml-1 mr-1">|</span> <span className="font-mono text-[13px] text-slate-500 font-medium">Período: {currentWeek}</span>
-          </h2>
-        </div>
+      {/* Lines tab - semana actual */}
+      <div className="flex items-center gap-6 border-b border-slate-200 mb-0 text-[13px] mt-0">
+        <span className="text-slate-800 font-semibold border-b-2 border-[#0e7490] pb-2 -mb-px">Líneas</span>
+        <span className="text-slate-400 pb-2 -mb-px text-[12px]">Semana: {currentWeek}</span>
+      </div>
 
-        <div className="overflow-x-auto">
-          {groupedList.length === 0 ? (
-            <div className="p-8 text-center text-[13px] text-slate-400">
-              No hay registros para mostrar.
-            </div>
-          ) : (
-            <table className="w-full text-left text-[13px] whitespace-nowrap">
-              <thead className="bg-slate-50 border-b border-slate-200">
-                <tr>
-                  <th className="px-4 py-3 font-semibold text-slate-800 border-r border-slate-100">Día / Fecha</th>
-                  <th className="px-4 py-3 font-semibold text-slate-800 border-r border-slate-100">Proyecto</th>
-                  <th className="px-4 py-3 font-semibold text-slate-800 border-r border-slate-100 text-center">Entrada</th>
-                  <th className="px-4 py-3 font-semibold text-slate-800 border-r border-slate-100 text-center">Salida</th>
-                  <th className="px-4 py-3 font-semibold text-slate-800">Evidencia (OT)</th>
+      {/* Tabla de la semana */}
+      <div className="overflow-x-auto">
+        {currentWeekEntries.length === 0 ? (
+          <div className="py-8 text-center text-[12px] text-slate-400">
+            No hay registros esta semana.
+          </div>
+        ) : (
+          <table className="w-full text-left text-[12px] whitespace-nowrap">
+            <thead>
+              <tr className="border-b border-slate-200 text-slate-600">
+                <th className="px-3 py-2.5 font-medium border-r border-slate-100">Día / Fecha</th>
+                <th className="px-3 py-2.5 font-medium border-r border-slate-100">Proyecto</th>
+                <th className="px-3 py-2.5 font-medium border-r border-slate-100 text-center">Entrada</th>
+                <th className="px-3 py-2.5 font-medium border-r border-slate-100 text-center">Salida</th>
+                <th className="px-3 py-2.5 font-medium">Evidencia (OT)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {currentWeekEntries.map((entry) => (
+                <tr key={entry.id} className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
+                  <td className="px-3 py-2 border-r border-slate-100">
+                    <span className="text-slate-700 capitalize">
+                      {new Date(entry.date).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' })}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2 border-r border-slate-100 text-slate-500">
+                    {entry.analitica && entry.analitica !== 'N/A' ? entry.analitica : '—'}
+                  </td>
+                  <td className="px-3 py-2 border-r border-slate-100 text-center font-mono text-slate-500">{formatTime(entry.clockIn)}</td>
+                  <td className="px-3 py-2 border-r border-slate-100 text-center font-mono text-slate-500">{formatTime(entry.clockOut)}</td>
+                  <td className="px-3 py-2">
+                    {entry.otImage ? (
+                      <div className="flex items-center gap-2">
+                        <a href={entry.otImage} target="_blank" rel="noreferrer" className="text-[#0e7490] hover:underline text-[11px]">Ver OT</a>
+                        <label className="text-[11px] text-slate-400 hover:text-[#0e7490] cursor-pointer transition-colors">
+                          <ImagePlus size={11} className="inline mr-0.5" />Cambiar
+                          <input type="file" accept="image/*" className="hidden" onChange={(e) => handleFileUpload(e, entry.id)} />
+                        </label>
+                      </div>
+                    ) : (
+                      <label className="text-[11px] text-slate-400 hover:text-[#0e7490] cursor-pointer flex items-center gap-1 transition-colors w-fit">
+                        <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => handleFileUpload(e, entry.id)} />
+                        <ImagePlus size={12} /> Subir OT
+                      </label>
+                    )}
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="bg-white">
-                {groupedList.flatMap((weekGroup) => [
-                  ...weekGroup.entries.map((entry) => (
-                    <tr key={entry.id} className="hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-b-0">
-                      <td className="px-4 py-3 border-r border-slate-100">
-                        <span className="font-semibold text-slate-800 capitalize">
-                          {new Date(entry.date).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' })}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 border-r border-slate-100 text-slate-600 font-medium">
-                        {entry.analitica && entry.analitica !== 'N/A' ? entry.analitica : '---'}
-                      </td>
-                      <td className="px-4 py-3 border-r border-slate-100 text-center">
-                        <span className="font-mono text-slate-500">{formatTime(entry.clockIn)}</span>
-                      </td>
-                      <td className="px-4 py-3 border-r border-slate-100 text-center">
-                        <span className="font-mono text-slate-500">{formatTime(entry.clockOut)}</span>
-                      </td>
-                      <td className="px-4 py-3">
-                        {entry.otImage ? (
-                          <div className="flex items-center gap-3">
-                            <a href={entry.otImage} target="_blank" rel="noreferrer" className="block w-10 h-10 rounded border border-slate-300 overflow-hidden shadow-sm hover:border-blue-500">
-                              <img src={entry.otImage} alt="OT" className="w-full h-full object-cover" />
-                            </a>
-                            <label className="text-[11px] text-blue-600 font-medium hover:underline cursor-pointer flex items-center gap-1 bg-blue-50 px-2 py-1 rounded border border-blue-100">
-                              <ImagePlus size={12} /> Actualizar
-                              <input type="file" accept="image/*" className="hidden" onChange={(e) => handleFileUpload(e, entry.id)} />
-                            </label>
-                          </div>
-                        ) : (
-                          <label className="flex items-center justify-center gap-1.5 px-3 py-1.5 border border-dashed border-slate-300 text-slate-600 hover:text-blue-600 hover:border-blue-500 bg-slate-50 hover:bg-blue-50 rounded-sm cursor-pointer transition-colors w-fit text-[12px] font-medium">
-                            <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => handleFileUpload(e, entry.id)} />
-                            <ImagePlus size={14} /> Subir OT
-                          </label>
-                        )}
-                      </td>
-                    </tr>
-                  ))
-                ])}
-              </tbody>
-            </table>
-          )}
-        </div>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
 
     </div>

@@ -25,10 +25,10 @@ const ProtectedRoute = ({ children, allowedRole }) => {
 
 const AppLayout = ({ children }) => {
   return (
-    <div className="min-h-screen bg-[#f3f4f6] font-sans text-slate-800 flex flex-col overflow-hidden">
+    <div className="min-h-screen bg-white font-sans text-slate-800 flex flex-col overflow-hidden">
       <Navbar />
-      <div className="flex flex-1 overflow-hidden h-[calc(100vh-56px)] justify-center">
-        <main className="flex-1 overflow-y-auto w-full bg-[#f3f4f6] p-4 md:p-6">
+      <div className="flex flex-1 overflow-hidden h-[calc(100vh-48px)] justify-center">
+        <main className="flex-1 overflow-y-auto w-full bg-white px-6 py-5">
           {children}
         </main>
       </div>

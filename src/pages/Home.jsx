@@ -18,23 +18,47 @@ const Home = () => {
   };
 
   return (
-    <div className="p-10 font-sans">
-      <h1 className="text-xl font-bold mb-4">Demo: Parte de Horas (Enlaces Internos)</h1>
-      <p className="mb-6 text-sm text-gray-600">
-        Selecciona la vista a la que deseas ingresar para la demostración:
-      </p>
+    <div className="min-h-screen bg-white flex flex-col">
+      {/* Top bar mimicking BC */}
+      <div className="bg-[#1e293b] h-[48px] flex items-center px-5">
+        <span className="text-white/90 font-normal text-[14px] tracking-wide">Parte de Horas</span>
+      </div>
 
-      <ul className="space-y-4 list-disc pl-5 text-blue-600 underline cursor-pointer">
-        <li onClick={() => handleLogin('worker')}>
-          Ir a Vista Web App Trabajador (Móvil)
-        </li>
-        <li onClick={() => handleLogin('manager')}>
-          Ir a Panel de Encargado (Aprobaciones)
-        </li>
-        <li onClick={() => handleLogin('hr')}>
-          Ir a Panel Consolidado RRHH (Métricas)
-        </li>
-      </ul>
+      <div className="flex-1 flex flex-col justify-center items-start max-w-xl mx-auto w-full px-6 py-16">
+        <h1 className="text-[28px] font-normal text-slate-800 mb-2">
+          Parte de Horas
+        </h1>
+        <p className="text-[14px] text-slate-500 mb-8">
+          Selecciona la vista a la que deseas ingresar para la demostración.
+        </p>
+
+        <div className="w-full space-y-0 text-[14px]">
+          <div
+            className="flex items-baseline py-3 cursor-pointer group"
+            onClick={() => handleLogin('worker')}
+          >
+            <span className="text-[#0e7490] group-hover:text-[#0c5f73] transition-colors min-w-[240px]">Vista Trabajador (Móvil)</span>
+            <span className="flex-1 border-b border-dotted border-slate-300 mx-3"></span>
+            <span className="text-slate-400 text-[12px]">worker</span>
+          </div>
+          <div
+            className="flex items-baseline py-3 cursor-pointer group"
+            onClick={() => handleLogin('manager')}
+          >
+            <span className="text-[#0e7490] group-hover:text-[#0c5f73] transition-colors min-w-[240px]">Panel de Encargado (Aprobaciones)</span>
+            <span className="flex-1 border-b border-dotted border-slate-300 mx-3"></span>
+            <span className="text-slate-400 text-[12px]">manager</span>
+          </div>
+          <div
+            className="flex items-baseline py-3 cursor-pointer group"
+            onClick={() => handleLogin('hr')}
+          >
+            <span className="text-[#0e7490] group-hover:text-[#0c5f73] transition-colors min-w-[240px]">Panel Consolidado RRHH (Nóminas)</span>
+            <span className="flex-1 border-b border-dotted border-slate-300 mx-3"></span>
+            <span className="text-slate-400 text-[12px]">hr</span>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

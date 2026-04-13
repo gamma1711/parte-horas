@@ -1,6 +1,6 @@
 import React from 'react';
 import { useData } from '../../context/DataContext';
-import { LogOut, User } from 'lucide-react';
+import { LogOut, User, Search, Settings, HelpCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const Navbar = () => {
@@ -14,37 +14,46 @@ const Navbar = () => {
 
   if (!currentUser) return null;
 
+  const roleLabel = {
+    worker: 'Parte de Horas',
+    manager: 'Parte de Horas - Encargado',
+    hr: 'Parte de Horas - RRHH',
+  };
+
   return (
-    <nav className="bg-[#f8f9fa] border-b border-slate-300 shadow-[0_1px_2px_rgba(0,0,0,0.05)] sticky top-0 z-50 h-14 flex-shrink-0">
-      <div className="flex justify-between h-full items-center px-4">
-        
-        {/* LOGO */}
-        <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate(`/${currentUser.role}`)}>
-          <div className="w-6 h-6 bg-slate-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
-            P
+    <nav className="bg-[#1e293b] sticky top-0 z-50 h-[48px] flex-shrink-0 select-none">
+      <div className="flex justify-between h-full items-center px-5">
+
+        {/* LEFT - Logo + Title */}
+        <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate(`/${currentUser.role}`)}>
+          <div className="flex items-center gap-1.5">
+            <div className="w-[18px] h-[18px] bg-white/20 rounded-[3px] flex items-center justify-center">
+              <span className="text-white text-[10px] font-bold">≡</span>
+            </div>
           </div>
-          <span className="font-bold text-[15px] text-slate-800 tracking-tight">
-            Reporte de Horas (Beta)
+          <span className="text-white/90 font-normal text-[14px] tracking-wide">
+            {roleLabel[currentUser.role] || 'Parte de Horas'}
           </span>
         </div>
-        
-        {/* RIGHT SIDE */}
-        <div className="flex items-center gap-4 text-sm text-slate-600 font-medium">
-          <div className="flex items-center gap-2">
-            <User size={16} className="text-slate-500" />
-            <span className="hidden sm:inline-block truncate max-w-[150px]">
-              {currentUser.name}
-            </span>
+
+        {/* RIGHT - User + Actions */}
+        <div className="flex items-center gap-5 text-[13px]">
+          <Search size={16} className="text-white/50 hover:text-white/80 cursor-pointer transition-colors" />
+          <HelpCircle size={16} className="text-white/50 hover:text-white/80 cursor-pointer transition-colors hidden sm:block" />
+          <Settings size={16} className="text-white/50 hover:text-white/80 cursor-pointer transition-colors hidden sm:block" />
+
+          <div className="flex items-center gap-2 ml-2">
+            <div className="w-7 h-7 rounded-full bg-[#0e7490] flex items-center justify-center text-white text-[11px] font-bold uppercase">
+              {currentUser.name?.charAt(0) || 'U'}
+            </div>
           </div>
 
-          <div className="w-px h-5 bg-slate-300"></div>
-
-          <button 
+          <button
             onClick={handleLogout}
-            className="text-slate-500 hover:text-slate-800 transition-colors flex items-center gap-1"
+            className="text-white/50 hover:text-white/90 transition-colors"
             title="Cerrar sesión"
           >
-            Salir
+            <LogOut size={16} />
           </button>
         </div>
 
