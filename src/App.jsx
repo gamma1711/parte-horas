@@ -4,9 +4,9 @@ import { DataProvider, useData } from './context/DataContext';
 
 import Navbar from './components/layout/Navbar';
 import Home from './pages/Home';
-import WorkerDashboard from './pages/Worker/WorkerDashboard';
 import ManagerDashboard from './pages/Manager/ManagerDashboard';
 import HRDashboard from './pages/HR/HRDashboard';
+import WorkerDashboard from './pages/Worker/WorkerDashboard';
 
 const ProtectedRoute = ({ children, allowedRole }) => {
   const { currentUser } = useData();
@@ -15,9 +15,21 @@ const ProtectedRoute = ({ children, allowedRole }) => {
     return <Navigate to="/" replace />;
   }
 
-  // Permitir solo a los que tienen el rol, si se especifica
-  if (allowedRole && currentUser.role !== allowedRole) {
-    return <Navigate to={`/${currentUser.role}`} replace />;
+  // Permitir basado en keywords o coincidencia exacta
+  if (allowedRole) {
+    const role = currentUser.role.toLowerCase();
+    const isAllowed = 
+      (allowedRole === 'manager' && (role.includes('manager') || role === 'hsqe')) ||
+      (allowedRole === 'hr' && role === 'rrhh') ||
+      (role === allowedRole);
+
+    if (!isAllowed) {
+      // Redirigir a su propio dashboard si intenta entrar a uno prohibido
+      let target = '/worker';
+      if (role.includes('manager') || role === 'hsqe') target = '/manager';
+      if (role === 'rrhh') target = '/hr';
+      return <Navigate to={target} replace />;
+    }
   }
 
   return children;
@@ -41,16 +53,6 @@ function AppRoutes() {
     <Routes>
       <Route path="/" element={<Home />} />
       <Route
-        path="/worker"
-        element={
-          <ProtectedRoute allowedRole="worker">
-            <AppLayout>
-              <WorkerDashboard />
-            </AppLayout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
         path="/manager"
         element={
           <ProtectedRoute allowedRole="manager">
@@ -67,6 +69,14 @@ function AppRoutes() {
             <AppLayout>
               <HRDashboard />
             </AppLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/worker"
+        element={
+          <ProtectedRoute allowedRole="worker">
+            <WorkerDashboard />
           </ProtectedRoute>
         }
       />

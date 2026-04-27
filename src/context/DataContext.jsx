@@ -5,14 +5,6 @@ const DataContext = createContext();
 
 export const useData = () => useContext(DataContext);
 
-const HOLIDAYS = ['01-01', '05-01', '12-25', '04-01', '04-02'];
-
-const isHoliday = (dateString) => {
-  const d = new Date(dateString);
-  const monthDay = `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  return HOLIDAYS.includes(monthDay);
-};
-
 export const DataProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [users, setUsers] = useState([]);
@@ -21,183 +13,132 @@ export const DataProvider = ({ children }) => {
 
   const fetchData = async () => {
     setLoading(true);
-    
-    const { data: usersData, error: usersError } = await supabase.from('users').select('*');
-    if (!usersError && usersData) {
-      setUsers(usersData);
-    } else {
-      console.error("Error cargando usuarios:", usersError);
-    }
-    
-    const { data: entriesData, error: entriesError } = await supabase
-      .from('time_entries')
-      .select(`*, users ( name )`)
-      .order('date', { ascending: false });
+    try {
+      const { data: usersData, error: usersError } = await supabase.from('users').select('*');
+      if (!usersError && usersData) {
+        setUsers(usersData);
+      } else if (usersError) {
+        console.error("Error cargando usuarios:", usersError);
+      }
+      
+      const { data: entriesData, error: entriesError } = await supabase
+        .from('time_entries')
+        .select(`*, users!inner( name, area )`)
+        .order('date', { ascending: false });
 
-    if (!entriesError && entriesData) {
-      const formattedEntries = entriesData.map(e => ({
-        id: e.id,
-        workerId: e.worker_id,
-        workerName: e.users?.name?.split(' (')[0] || 'Desconocido',
-        date: e.date,
-        clockIn: e.clock_in,
-        clockOut: e.clock_out,
-        status: e.status,
-        comments: e.comments || '',
-        otImage: e.ot_image_url,
-        analitica: e.analitica || 'N/A',
-        dieta: e.dieta || 0,
-        isFestivo: e.is_festivo,
-        clockInLat: e.clock_in_lat,
-        clockInLng: e.clock_in_lng,
-        clockOutLat: e.clock_out_lat,
-        clockOutLng: e.clock_out_lng
-      }));
-      setTimeEntries(formattedEntries);
-    } else {
-      console.error("Error cargando time entries:", entriesError);
+      if (!entriesError && entriesData) {
+        const formattedEntries = entriesData.map(e => ({
+          id: e.id,
+          workerId: e.worker_id,
+          workerName: e.users?.name?.split(' (')[0] || 'Desconocido',
+          workerArea: e.users?.area,
+          date: e.date,
+          clockIn: e.clock_in,
+          clockOut: e.clock_out,
+          status: e.status,
+          comments: e.comments || '',
+          otImage: e.ot_image_url,
+          analitica: e.analitica || 'N/A',
+          tipoJornada: e.tipo_jornada || 'Jornada Activa',
+          dieta: e.dieta || 0,
+          isFestivo: e.is_festivo,
+          clockInLat: e.clock_in_lat,
+          clockInLng: e.clock_in_lng,
+          clockOutLat: e.clock_out_lat,
+          clockOutLng: e.clock_out_lng
+        }));
+        setTimeEntries(formattedEntries);
+      } else if (entriesError) {
+        console.error("Error cargando time entries:", entriesError);
+      }
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   useEffect(() => {
     fetchData();
+
+    // Persistencia de sesión
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        getUserProfile(session.user.email);
+      }
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) {
+        getUserProfile(session.user.email);
+      } else {
+        setCurrentUser(null);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  const login = (role) => {
-    const user = users.find(u => u.role === role);
-    setCurrentUser(user);
-    if (!loading) fetchData(); 
-  };
+  const getUserProfile = async (email) => {
+    const { data: profile, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('email', email)
+      .single();
 
-  const logout = () => {
-    setCurrentUser(null);
-  };
-
-  const clockIn = async (explicitDate, analitica = 'N/A', dieta = 0, coords = null) => {
-    if (!currentUser) return;
-    const now = explicitDate ? new Date(explicitDate) : new Date();
-    const dateStr = now.toISOString().split('T')[0];
-    
-    const newEntry = {
-      worker_id: currentUser.id,
-      date: dateStr,
-      clock_in: now.toISOString(),
-      status: 'pending',
-      analitica,
-      dieta,
-      is_festivo: isHoliday(dateStr),
-      clock_in_lat: coords?.lat || null,
-      clock_in_lng: coords?.lng || null
-    };
-    
-    const { data, error } = await supabase.from('time_entries').insert([newEntry]).select('*, users(name)').single();
-    if (error) {
-      console.error("Error en clockIn:", error);
-      alert("Error al registrar entrada: " + error.message);
-    } else if (data) {
-        const formatted = {
-          id: data.id,
-          workerId: data.worker_id,
-          workerName: data.users?.name?.split(' (')[0] || currentUser.name.split(' (')[0],
-          date: data.date,
-          clockIn: data.clock_in,
-          clockOut: data.clock_out,
-          status: data.status,
-          comments: data.comments || '',
-          otImage: data.ot_image_url,
-          analitica: data.analitica || 'N/A',
-          dieta: data.dieta || 0,
-          isFestivo: data.is_festivo,
-          clockInLat: data.clock_in_lat,
-          clockInLng: data.clock_in_lng,
-          clockOutLat: data.clock_out_lat,
-          clockOutLng: data.clock_out_lng
-        };
-        setTimeEntries([formatted, ...timeEntries]);
+    if (!error && profile) {
+      setCurrentUser(profile);
     }
   };
 
-  const clockOut = async (entryId, explicitDate, coords = null) => {
-    const now = explicitDate ? new Date(explicitDate) : new Date();
+  const login = async (rawRfc, password) => {
+    const rfc = rawRfc.trim().toUpperCase();
+    console.log("Iniciando proceso de login para RFC:", rfc);
     
-    const updateData = {
-      clock_out: now.toISOString(),
-      clock_out_lat: coords?.lat || null,
-      clock_out_lng: coords?.lng || null
-    };
-    
-    const { data, error } = await supabase
-        .from('time_entries')
-        .update(updateData)
-        .eq('id', entryId)
-        .select()
+    try {
+      // 1. Buscar el correo asociado al RFC en la tabla 'users'
+      // Nota: Esto requiere que la tabla 'users' permita lectura pública o anon.
+      const { data: userProfile, error: searchError } = await supabase
+        .from('users')
+        .select('email, rfc')
+        .eq('rfc', rfc)
         .single();
-        
-    if (error) {
-       console.error("Error en clockOut:", error);
-       alert("Error al registrar salida: " + error.message);
-    } else if (data) {
-       setTimeEntries(entries => 
-         entries.map(entry => 
-           entry.id === entryId ? { ...entry, clockOut: data.clock_out, clockOutLat: data.clock_out_lat, clockOutLng: data.clock_out_lng } : entry
-         )
-       );
-    }
-  };
 
-  const updateEntryStatus = async (entryId, newStatus, comments = '') => {
-      const { error } = await supabase
-          .from('time_entries')
-          .update({ status: newStatus, comments: comments })
-          .eq('id', entryId);
-      
-      if (!error) {
-         setTimeEntries(entries =>
-           entries.map(entry =>
-             entry.id === entryId ? { ...entry, status: newStatus, comments: comments } : entry
-           )
-         );
+      if (searchError || !userProfile) {
+        throw new Error("No se encontró ningún usuario con ese RFC.");
       }
+
+      const email = userProfile.email;
+      console.log("Correo encontrado:", email, ". Intentando login en Supabase...");
+
+      // 2. Intentar login con el correo encontrado
+      const { data, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (authError) throw authError;
+
+      if (data.user) {
+        // 3. Volver a buscar el perfil completo (ahora ya autenticado)
+        const { data: fullProfile, error: profileError } = await supabase
+          .from('users')
+          .select('*')
+          .eq('email', email)
+          .single();
+
+        if (profileError) throw profileError;
+
+        setCurrentUser(fullProfile);
+        return { success: true };
+      }
+    } catch (err) {
+      console.error("Error en login:", err.message);
+      return { success: false, error: err.message };
+    }
   };
 
-  const uploadOT = async (entryId, fileObj) => {
-    if (!fileObj || !(fileObj instanceof File)) {
-       console.error("Para Supabase se requiere el objeto File real.");
-       return;
-    }
-    
-    const fileExt = fileObj.name.split('.').pop() || 'jpg';
-    const fileName = `${entryId}_${Date.now()}.${fileExt}`;
-    
-    // Subir a bucket "ot_images"
-    const { error: uploadError } = await supabase.storage.from('ot_images').upload(fileName, fileObj, {
-      cacheControl: '3600',
-      upsert: false
-    });
-    
-    if (uploadError) {
-      console.error("Error subiendo OT al bucket:", uploadError);
-      alert("Error subiendo imagen. Verifica que el bucket 'ot_images' exista en Supabase y sea público.");
-      return;
-    }
-    
-    const { data: publicURLData } = supabase.storage.from('ot_images').getPublicUrl(fileName);
-    const imageUrl = publicURLData.publicUrl;
-    
-    // Actualizar registro
-    const { error: dbError } = await supabase.from('time_entries').update({ ot_image_url: imageUrl }).eq('id', entryId);
-    
-    if (!dbError) {
-       setTimeEntries(entries =>
-         entries.map(entry =>
-           entry.id === entryId ? { ...entry, otImage: imageUrl } : entry
-         )
-       );
-    } else {
-        console.error("Error actualizando url en db:", dbError);
-    }
+  const logout = async () => {
+    await supabase.auth.signOut();
+    setCurrentUser(null);
   };
 
   const approveWeek = async (entryIdsToApprove, status, comments = '') => {
@@ -216,8 +157,68 @@ export const DataProvider = ({ children }) => {
           );
       } else {
           console.error("Error en approveWeek:", error);
-          alert("No se pudo revisar la semana en la BD: " + error.message);
       }
+  };
+
+  const clockIn = async (analitica, tipoJornada, dieta, lat, lng) => {
+    const newEntry = {
+      worker_id: currentUser.id,
+      date: new Date().toISOString().split('T')[0],
+      clock_in: new Date().toISOString(),
+      status: 'pending',
+      analitica,
+      tipo_jornada: tipoJornada,
+      dieta: dieta ? 1 : 0,
+      clock_in_lat: lat,
+      clock_in_lng: lng
+    };
+
+    const { data, error } = await supabase
+      .from('time_entries')
+      .insert([newEntry])
+      .select()
+      .single();
+
+    if (!error && data) {
+      const formatted = {
+        id: data.id,
+        workerId: data.worker_id,
+        workerName: currentUser.name,
+        workerArea: currentUser.area,
+        date: data.date,
+        clockIn: data.clock_in,
+        clockOut: data.clock_out,
+        status: data.status,
+        comments: data.comments || '',
+        analitica: data.analitica,
+        dieta: data.dieta,
+        clockInLat: data.clock_in_lat,
+        clockInLng: data.clock_in_lng
+      };
+      setTimeEntries(prev => [formatted, ...prev]);
+      return { success: true, entry: formatted };
+    }
+    return { success: false, error: error?.message };
+  };
+
+  const clockOut = async (entryId, lat, lng) => {
+    const clockOutTime = new Date().toISOString();
+    const { error } = await supabase
+      .from('time_entries')
+      .update({
+        clock_out: clockOutTime,
+        clock_out_lat: lat,
+        clock_out_lng: lng
+      })
+      .eq('id', entryId);
+
+    if (!error) {
+      setTimeEntries(prev =>
+        prev.map(e => e.id === entryId ? { ...e, clockOut: clockOutTime, clockOutLat: lat, clockOutLng: lng } : e)
+      );
+      return { success: true };
+    }
+    return { success: false, error: error?.message };
   };
 
   const updateEntryAnalitica = async (entryId, newAnalitica) => {
@@ -234,24 +235,43 @@ export const DataProvider = ({ children }) => {
       );
     } else {
       console.error("Error actualizando analítica:", error);
-      alert("Error al actualizar analítica: " + error.message);
     }
   };
+
+  const filteredTimeEntries = React.useMemo(() => {
+    if (!currentUser) return [];
+    
+    const role = currentUser.role.toLowerCase();
+    
+    // RRHH ve todo
+    if (role === 'rrhh') return timeEntries;
+    
+    // Managers ven su área
+    if (role.includes('manager') || role === 'hsqe') {
+      return timeEntries.filter(e => e.workerArea === currentUser.area);
+    }
+    
+    // Trabajadores ven lo suyo
+    if (role === 'worker') {
+      return timeEntries.filter(e => e.workerId === currentUser.id);
+    }
+    
+    return [];
+  }, [timeEntries, currentUser]);
 
   return (
     <DataContext.Provider
       value={{
         currentUser,
         users,
-        timeEntries,
+        timeEntries: filteredTimeEntries,
+        allTimeEntries: timeEntries, // Para casos donde se necesiten todos
         login,
         logout,
+        approveWeek,
+        updateEntryAnalitica,
         clockIn,
         clockOut,
-        updateEntryStatus,
-        approveWeek,
-        uploadOT,
-        updateEntryAnalitica,
         loading
       }}
     >
