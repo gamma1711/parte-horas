@@ -14,10 +14,11 @@ const Navbar = () => {
 
   if (!currentUser) return null;
 
-  const roleLabel = {
-    worker: 'Parte de Horas',
-    manager: 'Parte de Horas - Encargado',
-    hr: 'Parte de Horas - RRHH',
+  const getRoleLabel = () => {
+    const role = currentUser.role.toLowerCase();
+    if (role === 'rrhh') return 'Parte de Horas - RRHH';
+    if (role.includes('manager') || role === 'hsqe') return 'Parte de Horas - Encargado';
+    return 'Parte de Horas - Trabajador';
   };
 
   return (
@@ -25,14 +26,19 @@ const Navbar = () => {
       <div className="flex justify-between h-full items-center px-5">
 
         {/* LEFT - Logo + Title */}
-        <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate(`/${currentUser.role}`)}>
+        <div className="flex items-center gap-3 cursor-pointer" onClick={() => {
+          const role = currentUser.role.toLowerCase();
+          if (role === 'rrhh') navigate('/hr');
+          else if (role.includes('manager') || role === 'hsqe') navigate('/manager');
+          else navigate('/worker');
+        }}>
           <div className="flex items-center gap-1.5">
             <div className="w-[18px] h-[18px] bg-white/20 rounded-[3px] flex items-center justify-center">
               <span className="text-white text-[10px] font-bold">≡</span>
             </div>
           </div>
           <span className="text-white/90 font-normal text-[14px] tracking-wide">
-            {roleLabel[currentUser.role] || 'Parte de Horas'}
+            {getRoleLabel()}
           </span>
         </div>
 

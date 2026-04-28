@@ -12,10 +12,11 @@ DROP TABLE IF EXISTS users CASCADE;
 -- Tabla de Usuarios (Perfiles de Empleados)
 CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    -- Si vas a usar Supabase Auth, podrías vincular el ID así:
-    -- id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
-    role VARCHAR(50) NOT NULL CHECK (role IN ('worker', 'manager', 'hr')),
+    email VARCHAR(255) UNIQUE,
+    rfc VARCHAR(50) UNIQUE,
+    role VARCHAR(100) NOT NULL, -- e.g., 'manager wing', 'hsqe', 'rrhh', 'worker'
+    area VARCHAR(100),     -- E.g., 'wing', 'pv oym'
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -33,6 +34,7 @@ CREATE TABLE time_entries (
     
     ot_image_url VARCHAR(1024),
     analitica VARCHAR(100),
+    tipo_jornada VARCHAR(50) DEFAULT 'Jornada Activa', -- 'Jornada Activa' o 'Jornada Inactiva'
     dieta INTEGER DEFAULT 0,
     is_festivo BOOLEAN DEFAULT false,
     
@@ -74,12 +76,15 @@ CREATE INDEX idx_time_entries_status ON time_entries(status);
 -- 5. DATOS DE PRUEBA (MOCKS) Opcionales
 -- ==========================================
 
-INSERT INTO users (id, name, role) VALUES 
-    ('11111111-1111-1111-1111-111111111111', 'Juan Pérez (Trabajador)', 'worker'),
-    ('22222222-2222-2222-2222-222222222222', 'Ana Gómez (Encargada)', 'manager'),
-    ('33333333-3333-3333-3333-333333333333', 'Carlos López (RRHH)', 'hr'),
-    ('44444444-4444-4444-4444-444444444444', 'María García (Trabajador)', 'worker'),
-    ('55555555-5555-5555-5555-555555555555', 'Luis Hernández (Trabajador)', 'worker');
+INSERT INTO users (id, name, email, rfc, role, area) VALUES 
+    ('11111111-1111-1111-1111-111111111111', 'Juan Pérez (Trabajador Wing)', 'juan123@revergygroup.com', 'JUAN123', 'worker', 'wing'),
+    ('22222222-2222-2222-2222-222222222222', 'Julian Gallegos (Manager Wing)', 'juli456@revergygroup.com', 'JULI456', 'manager wing', 'wing'),
+    ('33333333-3333-3333-3333-333333333333', 'Carlos López (RRHH)', 'carl789@revergygroup.com', 'CARL789', 'rrhh', 'rrhh'),
+    ('44444444-4444-4444-4444-444444444444', 'Jorge Contreras (Manager PV)', 'jorg101@revergygroup.com', 'JORG101', 'manager pv oym tastiota', 'pv oym tastiota'),
+    ('55555555-5555-5555-5555-555555555555', 'Luis Hernández (Trabajador PV)', 'luis202@revergygroup.com', 'LUIS202', 'worker', 'pv oym tastiota'),
+    ('66666666-6666-6666-6666-666666666666', 'Sofia (HSQE)', 'sofi303@revergygroup.com', 'SOFI303', 'hsqe', 'hsqe'),
+    ('77777777-7777-7777-7777-777777777777', 'Pedro Martínez (Trabajador HSQE)', 'pedr404@revergygroup.com', 'PEDR404', 'worker', 'hsqe'),
+    ('88888888-8888-8888-8888-888888888888', 'Ana Belén (Trabajadora Compras)', 'anab505@revergygroup.com', 'ANAB505', 'worker', 'compras');
 
 -- ==========================================
 -- 6. REGISTROS DE PRUEBA (DIFERENTES PERIODOS Y ESTADOS)
@@ -107,7 +112,9 @@ INSERT INTO time_entries (worker_id, date, clock_in, clock_out, status, analitic
 INSERT INTO time_entries (worker_id, date, clock_in, clock_out, status, analitica, dieta, is_festivo) VALUES
 ('11111111-1111-1111-1111-111111111111', '2026-04-13', '2026-04-13 08:00:00Z', '2026-04-13 17:00:00Z', 'pending', 'PROY-A', 0, false),
 ('55555555-5555-5555-5555-555555555555', '2026-04-13', '2026-04-13 09:00:00Z', '2026-04-13 18:00:00Z', 'pending', 'PROY-C', 1, false),
-('44444444-4444-4444-4444-444444444444', '2026-04-14', '2026-04-14 08:30:00Z', '2026-04-14 14:00:00Z', 'pending', 'PROY-C', 0, false);
+('44444444-4444-4444-4444-444444444444', '2026-04-14', '2026-04-14 08:30:00Z', '2026-04-14 14:00:00Z', 'pending', 'PROY-C', 0, false),
+('77777777-7777-7777-7777-777777777777', '2026-04-14', '2026-04-14 08:00:00Z', '2026-04-14 17:00:00Z', 'pending', 'PROY-HSQE', 0, false),
+('88888888-8888-8888-8888-888888888888', '2026-04-14', '2026-04-14 09:00:00Z', '2026-04-14 18:00:00Z', 'pending', 'PROY-COM', 0, false);
 
 
 ALTER TABLE time_entries ADD COLUMN IF NOT EXISTS clock_in_lat DOUBLE PRECISION;

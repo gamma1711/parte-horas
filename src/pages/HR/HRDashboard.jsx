@@ -231,7 +231,7 @@ const HRDashboard = () => {
             <div className="text-[12px] space-y-1.5">
               <div className="flex justify-between"><span className="text-slate-500">H. Normales</span><span className="text-slate-800 tabular-nums">{selectedGroup.totalHours.toFixed(2)}</span></div>
               <div className="flex justify-between"><span className="text-slate-500">H. Extras</span><span className="text-slate-800 tabular-nums">{selectedGroup.extraHours.toFixed(2)}</span></div>
-              <div className="flex justify-between"><span className="text-slate-500">H. Especiales (Dom)</span><span className="text-slate-800 tabular-nums">{selectedGroup.specialHours.toFixed(2)}</span></div>
+              <div className="flex justify-between"><span className="text-slate-500">H. Domingo</span><span className="text-slate-800 tabular-nums">{selectedGroup.specialHours.toFixed(2)}</span></div>
               <div className="flex justify-between"><span className="text-slate-500">Festivos</span><span className="text-slate-800 tabular-nums">{selectedGroup.totalFestivos || 0}</span></div>
               <div className="flex justify-between"><span className="text-slate-500">Dietas</span><span className="text-slate-800 tabular-nums">{selectedGroup.totalDietas}</span></div>
               <div className="flex justify-between border-t border-slate-100 pt-1.5 mt-1.5">

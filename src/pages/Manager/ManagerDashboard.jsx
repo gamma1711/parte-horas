@@ -16,11 +16,11 @@ const getWeekRange = (dateString) => {
 };
 
 const ANALITICAS = [
-  'MX0010000','MX0011000','MX0012000','MX0013000','MX0014000','MX0015000',
-  'MX0016000','MX0017000','MX0020000','MX0031000','MX0032000','MX0057400',
-  'MX0078800','MX0081400','MX0085600','MX0090100','MX0091600','MX0093100',
-  'MX0094200','MX0096100','MX0096200','MX0096300','MX0097100','MX0097200',
-  'MX0097300','MX0098400','MX00OYMPA','MX00REPEJ'
+  'MX0010000', 'MX0011000', 'MX0012000', 'MX0013000', 'MX0014000', 'MX0015000',
+  'MX0016000', 'MX0017000', 'MX0020000', 'MX0031000', 'MX0032000', 'MX0057400',
+  'MX0078800', 'MX0081400', 'MX0085600', 'MX0090100', 'MX0091600', 'MX0093100',
+  'MX0094200', 'MX0096100', 'MX0096200', 'MX0096300', 'MX0097100', 'MX0097200',
+  'MX0097300', 'MX0098400', 'MX00OYMPA', 'MX00REPEJ'
 ];
 
 const ManagerDashboard = () => {
@@ -368,7 +368,7 @@ const ManagerDashboard = () => {
                 <span className="text-slate-800 tabular-nums">{selectedGroup.extraHours.toFixed(2)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-500">H. Especiales (Dom)</span>
+                <span className="text-slate-500">H. Domingo</span>
                 <span className="text-slate-800 tabular-nums">{selectedGroup.specialHours.toFixed(2)}</span>
               </div>
               <div className="flex justify-between">
@@ -554,11 +554,10 @@ const ManagerDashboard = () => {
                   setEditingEntryId(null);
                   setEditSearch('');
                 }}
-                className={`w-full text-left px-3 py-1.5 text-[12px] hover:bg-slate-50 transition-colors ${
-                  selectedGroup?.entries.find(e => e.id === editingEntryId)?.analitica === a
+                className={`w-full text-left px-3 py-1.5 text-[12px] hover:bg-slate-50 transition-colors ${selectedGroup?.entries.find(e => e.id === editingEntryId)?.analitica === a
                     ? 'bg-slate-100 font-medium text-[#0e7490]'
                     : 'text-slate-700'
-                }`}
+                  }`}
               >
                 {a}
               </button>
