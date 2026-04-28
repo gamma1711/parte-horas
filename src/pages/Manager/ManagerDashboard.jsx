@@ -442,7 +442,7 @@ const ManagerDashboard = () => {
                   <th className="px-3 py-2.5 font-medium border-r border-slate-100">Analítica</th>
                   <th className="px-3 py-2.5 font-medium border-r border-slate-100 text-center">H. Normal</th>
                   <th className="px-3 py-2.5 font-medium border-r border-slate-100 text-center">H. Extra</th>
-                  <th className="px-3 py-2.5 font-medium border-r border-slate-100 text-center">H. Especial</th>
+                  <th className="px-3 py-2.5 font-medium border-r border-slate-100 text-center">H. Domingo</th>
                   <th className="px-3 py-2.5 font-medium border-r border-slate-100 text-center">Festivos</th>
                   <th className="px-3 py-2.5 font-medium border-r border-slate-100">Estado</th>
                   <th className="px-3 py-2.5 font-medium text-center">Total</th>
@@ -555,8 +555,8 @@ const ManagerDashboard = () => {
                   setEditSearch('');
                 }}
                 className={`w-full text-left px-3 py-1.5 text-[12px] hover:bg-slate-50 transition-colors ${selectedGroup?.entries.find(e => e.id === editingEntryId)?.analitica === a
-                    ? 'bg-slate-100 font-medium text-[#0e7490]'
-                    : 'text-slate-700'
+                  ? 'bg-slate-100 font-medium text-[#0e7490]'
+                  : 'text-slate-700'
                   }`}
               >
                 {a}

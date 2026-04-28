@@ -304,7 +304,7 @@ const HRDashboard = () => {
                   <th className="px-3 py-2.5 font-medium border-r border-slate-100">Empleado</th>
                   <th className="px-3 py-2.5 font-medium border-r border-slate-100 text-center">H. Normal</th>
                   <th className="px-3 py-2.5 font-medium border-r border-slate-100 text-center">H. Extra</th>
-                  <th className="px-3 py-2.5 font-medium border-r border-slate-100 text-center">H. Especial</th>
+                  <th className="px-3 py-2.5 font-medium border-r border-slate-100 text-center">H. Domingo</th>
                   <th className="px-3 py-2.5 font-medium border-r border-slate-100 text-center">Festivos</th>
                   <th className="px-3 py-2.5 font-medium border-r border-slate-100 text-center">Dietas</th>
                   <th className="px-3 py-2.5 font-medium border-r border-slate-100">Estado</th>
