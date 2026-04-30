@@ -58,4 +58,12 @@ INSERT INTO users (name, email, rfc, role, area) VALUES
 ('ANTONIO JIMENEZ PEDRO', 'antonio120jp@gmail.com', 'AOJP8505292G8', 'worker', 'WIND O&M'),
 ('TOLEDO ALVAREZ JONATHAN', 'jhonytoledo100@gmail.com', 'TOAJ930807E59', 'worker', 'WIND O&M'),
 ('TRUJILLO CHEVEZ FABIAN', 'fabian.trujil45@gmail.com', 'TUCF970818MG0', 'worker', 'WIND O&M'),
-('LOPEZ MORALES ALUXALI', '')
+('LOPEZ MORALES ALUXALI', ''),
+('GALLEGOS QUECHA JULIAN', 'gallegos_jq@hotmail.com', 'GAQJ9203295E4', 'manager WIND O&M', 'WIND O&M'),
+('CONTRERAS HERNANDEZ JORGE ALBERTO', 'conher2504@gmail.com', 'COHJ830425SU1', 'manager PV O&M', 'PV O&M'),
+('PINEDA MATUS EDGAR', 'ematus_69@hotmail.com', 'PIME690213EG1', 'manager PV O&M', 'PV O&M'),
+('VILLALBA ENRIQUEZ SOFIA', 'villalba1422@hotmail.com', 'VIES9210214TA', 'manager HSQE', 'HSQE'),
+('ESTEVA PINEDA RICARDO', 'riarte34@hotmail.com', 'EEPR840329BV7', 'manager RRHH', 'RRHH'),
+('CANSECO ORDAZ JOSE IVAN ', 'canceco2@gmail.com', 'CAOI930227CC0', 'manager ALMACEN Y COMPRAS', 'ALMACEN Y COMPRAS'),
+('PEÑA SOTO JOSE DE JESUS', 'j.pena.s@outlook.com', 'PESJ750125JWA', 'manager FINANCIERO', 'FINANCIERO'),
+('CASTILLO VELASCO ERIC', 'ericcavelg@outlook.com', 'CAVE860814SJ7', 'manager OFICINA TECNICA', 'OFICINA TECNICA'), 
