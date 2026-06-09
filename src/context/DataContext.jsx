@@ -5,6 +5,35 @@ const DataContext = createContext();
 
 export const useData = () => useContext(DataContext);
 
+const getRoleFromEmail = (email) => {
+  if (!email) return 'worker';
+  const cleanEmail = email.trim().toLowerCase();
+  
+  const hrEmails = (import.meta.env.VITE_HR_EMAILS || '').toLowerCase().split(',').map(e => e.trim());
+  const hsqeEmails = (import.meta.env.VITE_HSQE_EMAILS || '').toLowerCase().split(',').map(e => e.trim());
+  const managerEmails = (import.meta.env.VITE_MANAGER_EMAILS || '').toLowerCase().split(',').map(e => e.trim());
+  
+  if (hrEmails.includes(cleanEmail)) return 'rrhh';
+  if (hsqeEmails.includes(cleanEmail)) return 'hsqe';
+  if (managerEmails.includes(cleanEmail)) return 'manager';
+  return 'worker';
+};
+
+const normalizeUserProfile = (profile) => {
+  if (!profile) return null;
+  const email = profile.email_empresa || profile.email_personal || '';
+  const derivedRole = getRoleFromEmail(email);
+  return {
+    id: profile.id,
+    name: profile.nombre,
+    role: derivedRole,
+    area: profile.departamento,
+    email: email,
+    rfc: profile.rfc,
+    estatus: profile.estatus
+  };
+};
+
 export const DataProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [users, setUsers] = useState([]);
@@ -15,38 +44,43 @@ export const DataProvider = ({ children }) => {
     setLoading(true);
     try {
       const { data: usersData, error: usersError } = await supabase.from('users').select('*');
+      let mappedUsers = [];
       if (!usersError && usersData) {
-        setUsers(usersData);
+        mappedUsers = usersData.map(normalizeUserProfile);
+        setUsers(mappedUsers);
       } else if (usersError) {
         console.error("Error cargando usuarios:", usersError);
       }
       
       const { data: entriesData, error: entriesError } = await supabase
         .from('time_entries')
-        .select(`*, users!inner( name, area )`)
+        .select(`*`)
         .order('date', { ascending: false });
 
       if (!entriesError && entriesData) {
-        const formattedEntries = entriesData.map(e => ({
-          id: e.id,
-          workerId: e.worker_id,
-          workerName: e.users?.name?.split(' (')[0] || 'Desconocido',
-          workerArea: e.users?.area,
-          date: e.date,
-          clockIn: e.clock_in,
-          clockOut: e.clock_out,
-          status: e.status,
-          comments: e.comments || '',
-          otImage: e.ot_image_url,
-          analitica: e.analitica || 'N/A',
-          tipoJornada: e.tipo_jornada || 'Jornada Activa',
-          dieta: e.dieta || 0,
-          isFestivo: e.is_festivo,
-          clockInLat: e.clock_in_lat,
-          clockInLng: e.clock_in_lng,
-          clockOutLat: e.clock_out_lat,
-          clockOutLng: e.clock_out_lng
-        }));
+        const formattedEntries = entriesData.map(e => {
+          const user = mappedUsers.find(u => u.id === e.worker_id) || {};
+          return {
+            id: e.id,
+            workerId: e.worker_id,
+            workerName: user.name || 'Desconocido',
+            workerArea: user.area || 'N/A',
+            date: e.date,
+            clockIn: e.clock_in,
+            clockOut: e.clock_out,
+            status: e.status,
+            comments: e.comments || '',
+            otImage: e.ot_image_url,
+            analitica: e.analitica || 'N/A',
+            tipoJornada: e.tipo_jornada || 'Jornada Activa',
+            dieta: e.dieta || 0,
+            isFestivo: e.is_festivo,
+            clockInLat: e.clock_in_lat,
+            clockInLng: e.clock_in_lng,
+            clockOutLat: e.clock_out_lat,
+            clockOutLng: e.clock_out_lng
+          };
+        });
         setTimeEntries(formattedEntries);
       } else if (entriesError) {
         console.error("Error cargando time entries:", entriesError);
@@ -78,14 +112,29 @@ export const DataProvider = ({ children }) => {
   }, []);
 
   const getUserProfile = async (email) => {
-    const { data: profile, error } = await supabase
+    // Buscar en email_empresa primero
+    let { data: profile, error } = await supabase
       .from('users')
       .select('*')
-      .eq('email', email)
-      .single();
+      .eq('email_empresa', email)
+      .maybeSingle();
+
+    // Si no se encuentra, buscar en email_personal
+    if (!profile) {
+      const { data: personalProfile, error: personalError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('email_personal', email)
+        .maybeSingle();
+
+      if (personalProfile) {
+        profile = personalProfile;
+        error = null;
+      }
+    }
 
     if (!error && profile) {
-      setCurrentUser(profile);
+      setCurrentUser(normalizeUserProfile(profile));
     }
   };
 
@@ -94,19 +143,23 @@ export const DataProvider = ({ children }) => {
     console.log("Iniciando proceso de login para RFC:", rfc);
     
     try {
-      // 1. Buscar el correo asociado al RFC en la tabla 'users'
-      // Nota: Esto requiere que la tabla 'users' permita lectura pública o anon.
+      // 1. Buscar el correo asociado al RFC en la tabla 'users' (caso-insensible)
       const { data: userProfile, error: searchError } = await supabase
         .from('users')
-        .select('email, rfc')
-        .eq('rfc', rfc)
-        .single();
+        .select('email_empresa, email_personal, rfc')
+        .ilike('rfc', rfc)
+        .maybeSingle();
+
+      console.log("Resultado de búsqueda de RFC:", { userProfile, searchError });
 
       if (searchError || !userProfile) {
         throw new Error("No se encontró ningún usuario con ese RFC.");
       }
 
-      const email = userProfile.email;
+      const email = userProfile.email_empresa || userProfile.email_personal;
+      if (!email) {
+        throw new Error("El usuario no tiene un correo electrónico registrado.");
+      }
       console.log("Correo encontrado:", email, ". Intentando login en Supabase...");
 
       // 2. Intentar login con el correo encontrado
@@ -118,16 +171,16 @@ export const DataProvider = ({ children }) => {
       if (authError) throw authError;
 
       if (data.user) {
-        // 3. Volver a buscar el perfil completo (ahora ya autenticado)
+        // 3. Volver a buscar el perfil completo por el RFC verificado (ahora ya autenticado)
         const { data: fullProfile, error: profileError } = await supabase
           .from('users')
           .select('*')
-          .eq('email', email)
+          .ilike('rfc', rfc)
           .single();
 
         if (profileError) throw profileError;
 
-        setCurrentUser(fullProfile);
+        setCurrentUser(normalizeUserProfile(fullProfile));
         return { success: true };
       }
     } catch (err) {
@@ -142,22 +195,22 @@ export const DataProvider = ({ children }) => {
   };
 
   const approveWeek = async (entryIdsToApprove, status, comments = '') => {
-      const { error } = await supabase
-          .from('time_entries')
-          .update({ status, comments })
-          .in('id', entryIdsToApprove);
-          
-      if (!error) {
-          setTimeEntries(entries =>
-            entries.map(entry =>
-              entryIdsToApprove.includes(entry.id)
-                ? { ...entry, status, comments }
-                : entry
-            )
-          );
-      } else {
-          console.error("Error en approveWeek:", error);
-      }
+    const { error } = await supabase
+      .from('time_entries')
+      .update({ status, comments })
+      .in('id', entryIdsToApprove);
+        
+    if (!error) {
+      setTimeEntries(entries =>
+        entries.map(entry =>
+          entryIdsToApprove.includes(entry.id)
+            ? { ...entry, status, comments }
+            : entry
+        )
+      );
+    } else {
+      console.error("Error en approveWeek:", error);
+    }
   };
 
   const clockIn = async (analitica, tipoJornada, dieta, lat, lng) => {
@@ -251,12 +304,8 @@ export const DataProvider = ({ children }) => {
       return timeEntries.filter(e => e.workerArea === currentUser.area);
     }
     
-    // Trabajadores ven lo suyo
-    if (role === 'worker') {
-      return timeEntries.filter(e => e.workerId === currentUser.id);
-    }
-    
-    return [];
+    // Todos los demás (Trabajadores, IT, etc.) ven sus propios registros
+    return timeEntries.filter(e => e.workerId === currentUser.id);
   }, [timeEntries, currentUser]);
 
   return (
@@ -265,7 +314,7 @@ export const DataProvider = ({ children }) => {
         currentUser,
         users,
         timeEntries: filteredTimeEntries,
-        allTimeEntries: timeEntries, // Para casos donde se necesiten todos
+        allTimeEntries: timeEntries,
         login,
         logout,
         approveWeek,

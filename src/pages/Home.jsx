@@ -94,7 +94,7 @@ const Home = () => {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className={`w-full py-2.5 bg-[#1e293b] hover:bg-[#334155] text-white font-semibold rounded text-[14px] transition-colors shadow-sm ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}
+                className={`w-full py-2.5 bg-[#1e293b] hover:bg-[#334155] text-white font-semibold rounded text-[14px] transition-colors shadow-sm cursor-pointer ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}
               >
                 {isSubmitting ? 'Autenticando...' : 'Acceder'}
               </button>

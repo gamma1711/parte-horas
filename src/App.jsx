@@ -21,6 +21,7 @@ const ProtectedRoute = ({ children, allowedRole }) => {
     const isAllowed = 
       (allowedRole === 'manager' && (role.includes('manager') || role === 'hsqe')) ||
       (allowedRole === 'hr' && role === 'rrhh') ||
+      (allowedRole === 'worker' && !role.includes('manager') && role !== 'hsqe' && role !== 'rrhh') ||
       (role === allowedRole);
 
     if (!isAllowed) {
