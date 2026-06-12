@@ -299,9 +299,13 @@ export const DataProvider = ({ children }) => {
     // RRHH ve todo
     if (role === 'rrhh') return timeEntries;
     
-    // Managers ven su área
+    // Managers ven su área (comparación case-insensitive)
     if (role.includes('manager') || role === 'hsqe') {
-      return timeEntries.filter(e => e.workerArea === currentUser.area);
+      const managerArea = (currentUser.area || '').toLowerCase().trim();
+      return timeEntries.filter(e => {
+        const workerArea = (e.workerArea || '').toLowerCase().trim();
+        return workerArea === managerArea;
+      });
     }
     
     // Todos los demás (Trabajadores, IT, etc.) ven sus propios registros

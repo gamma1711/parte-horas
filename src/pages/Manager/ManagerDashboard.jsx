@@ -1,27 +1,14 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useData } from '../../context/DataContext';
-import { Filter, Search, Eye, Check, Calendar, Clock, FileText, ChevronLeft, X, MapPin, Pencil } from 'lucide-react';
-
-// Helper to get ISO Week string like "2024-W12"
-const getWeekRange = (dateString) => {
-  const d = new Date(dateString);
-  const day = d.getDay();
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-  const monday = new Date(d.setDate(diff));
-  const sunday = new Date(monday);
-  sunday.setDate(monday.getDate() + 6);
-
-  const options = { day: '2-digit', month: '2-digit' };
-  return `${monday.toLocaleDateString('es-ES', options)} al ${sunday.toLocaleDateString('es-ES', options)}`;
-};
-
-const ANALITICAS = [
-  'MX0010000', 'MX0011000', 'MX0012000', 'MX0013000', 'MX0014000', 'MX0015000',
-  'MX0016000', 'MX0017000', 'MX0020000', 'MX0031000', 'MX0032000', 'MX0057400',
-  'MX0078800', 'MX0081400', 'MX0085600', 'MX0090100', 'MX0091600', 'MX0093100',
-  'MX0094200', 'MX0096100', 'MX0096200', 'MX0096300', 'MX0097100', 'MX0097200',
-  'MX0097300', 'MX0098400', 'MX00OYMPA', 'MX00REPEJ'
-];
+import { Search, Check, ChevronLeft, X, MapPin, Pencil } from 'lucide-react';
+import { 
+  getWeekRange, 
+  ANALITICAS, 
+  formatTime, 
+  getStatusLabel, 
+  groupEntriesByWorkerWeek, 
+  getSortedWeeks 
+} from '../../lib/utils';
 
 const ManagerDashboard = () => {
   const { timeEntries, approveWeek, updateEntryAnalitica } = useData();
@@ -61,70 +48,12 @@ const ManagerDashboard = () => {
     }
   }, [editingEntryId]);
 
-  // 1. Group by Worker + Week
-  const weeklyGroupsMap = {};
-  timeEntries.forEach(entry => {
-    const weekKey = getWeekRange(entry.date);
-    const groupKey = `${entry.workerId}_${weekKey}`;
-
-    if (!weeklyGroupsMap[groupKey]) {
-      weeklyGroupsMap[groupKey] = {
-        id: groupKey,
-        workerId: entry.workerId,
-        workerName: entry.workerName,
-        weekKey: weekKey,
-        entries: [],
-        totalHours: 0,
-        extraHours: 0,
-        specialHours: 0, // Domingos
-        totalFestivos: 0,
-        totalDietas: 0,  // Nuevo campo
-        analiticas: new Set(),
-      };
-    }
-
-    const group = weeklyGroupsMap[groupKey];
-    group.entries.push(entry);
-
-    if (entry.analitica) group.analiticas.add(entry.analitica);
-    if (entry.isFestivo) group.totalFestivos += 1;
-    if (entry.dieta) group.totalDietas = 1; // Máximo 1 por semana
-
-    if (entry.clockIn && entry.clockOut) {
-      const hrs = (new Date(entry.clockOut) - new Date(entry.clockIn)) / 3600000;
-      const d = new Date(entry.date);
-      if (d.getDay() === 0) {
-        group.specialHours += hrs;
-      } else {
-        group.totalHours += Math.min(hrs, 8);
-        group.extraHours += Math.max(0, hrs - 8);
-      }
-    }
-  });
-
-  // 2. Process Grouped List
-  const groupedList = Object.values(weeklyGroupsMap).map(group => {
-    let overallStatus = 'approved';
-    if (group.entries.some(e => e.status === 'rejected')) overallStatus = 'rejected';
-    else if (group.entries.some(e => e.status === 'pending')) overallStatus = 'pending';
-    return { ...group, overallStatus, analiticaJoin: Array.from(group.analiticas).join(', ') || 'N/A' };
-  });
-
+  // Use shared grouping utility
+  const groupedList = groupEntriesByWorkerWeek(timeEntries);
   const currentWeek = getWeekRange(new Date().toISOString());
+  const availableWeeks = getSortedWeeks(groupedList, currentWeek);
 
-  const availableWeeks = Array.from(new Set(groupedList.map(g => g.weekKey))).sort((a, b) => {
-    const parseDate = (str) => {
-      const parts = str.split(' ')[0].split('/'); // DD/MM/YYYY
-      if (parts.length === 3) return new Date(parts[2], parts[1] - 1, parts[0]).getTime();
-      return 0;
-    };
-    return parseDate(b) - parseDate(a); // descendente
-  });
-  if (!availableWeeks.includes(currentWeek)) {
-    availableWeeks.unshift(currentWeek);
-  }
-
-  // 3. Filter
+  // Filter
   const filteredGroups = groupedList.filter(g =>
     (filterWeek === 'todas' || g.weekKey === filterWeek) &&
     (filterState === 'todos' || g.overallStatus === filterState) &&
@@ -132,16 +61,7 @@ const ManagerDashboard = () => {
   );
 
   const getStatusText = (status) => {
-    switch (status) {
-      case 'approved': return <span className="text-[12px] text-slate-600">Aprobado</span>;
-      case 'rejected': return <span className="text-[12px] text-slate-600">Rechazado</span>;
-      default: return <span className="text-[12px] text-slate-600">Pendiente</span>;
-    }
-  };
-
-  const formatTime = (isoString) => {
-    if (!isoString) return '--:--';
-    return new Date(isoString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return <span className="text-[12px] text-slate-600">{getStatusLabel(status)}</span>;
   };
 
   // --- Handlers Modal ---

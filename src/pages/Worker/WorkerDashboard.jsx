@@ -10,17 +10,11 @@ import {
   XCircle, 
   AlertCircle,
   Calendar,
-  ArrowRight
+  ArrowRight,
+  Loader2
 } from 'lucide-react';
 import logoRevergy from '../../assets/7-revergy_horizontal.png';
-
-const ANALITICAS = [
-  'MX0010000','MX0011000','MX0012000','MX0013000','MX0014000','MX0015000',
-  'MX0016000','MX0017000','MX0020000','MX0031000','MX0032000','MX0057400',
-  'MX0078800','MX0081400','MX0085600','MX0090100','MX0091600','MX0093100',
-  'MX0094200','MX0096100','MX0096200','MX0096300','MX0097100','MX0097200',
-  'MX0097300','MX0098400','MX00OYMPA','MX00REPEJ'
-];
+import { ANALITICAS, getCurrentWeekDisplayRange, getCurrentPosition } from '../../lib/utils';
 
 const WorkerDashboard = () => {
   const { timeEntries, currentUser, logout, clockIn, clockOut } = useData();
@@ -30,6 +24,7 @@ const WorkerDashboard = () => {
   const [applyDieta, setApplyDieta] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [geoStatus, setGeoStatus] = useState(''); // '', 'loading', 'success', 'error'
 
   // Update clock every second
   useEffect(() => {
@@ -55,10 +50,27 @@ const WorkerDashboard = () => {
 
   const handleShiftAction = async () => {
     setIsSubmitting(true);
+    setGeoStatus('loading');
     
-    // Simular geolocalización
-    const lat = 20.659698;
-    const lng = -103.349609;
+    // Obtener ubicación real del dispositivo
+    const position = await getCurrentPosition();
+    
+    if (!position) {
+      setGeoStatus('error');
+      const confirmContinue = window.confirm(
+        'No se pudo obtener tu ubicación GPS. ¿Deseas continuar sin geolocalización?\n\nAsegúrate de dar permiso de ubicación al navegador.'
+      );
+      if (!confirmContinue) {
+        setIsSubmitting(false);
+        setGeoStatus('');
+        return;
+      }
+    } else {
+      setGeoStatus('success');
+    }
+
+    const lat = position?.lat || null;
+    const lng = position?.lng || null;
 
     if (activeShift) {
       await clockOut(activeShift.id, lat, lng);
@@ -66,11 +78,15 @@ const WorkerDashboard = () => {
       if (!selectedAnalitica) {
         alert("Por favor selecciona una analítica antes de empezar.");
         setIsSubmitting(false);
+        setGeoStatus('');
         return;
       }
       await clockIn(selectedAnalitica, tipoJornada, applyDieta, lat, lng);
     }
+    
     setIsSubmitting(false);
+    // Reset geo status after 3 seconds
+    setTimeout(() => setGeoStatus(''), 3000);
   };
 
   const { hours, minutes, seconds } = formatTime(currentTime);
@@ -78,6 +94,9 @@ const WorkerDashboard = () => {
   const filteredAnaliticas = ANALITICAS.filter(a => 
     a.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // Rango de semana dinámico
+  const weekDisplayRange = getCurrentWeekDisplayRange();
 
   return (
     <div className="max-w-md mx-auto bg-[#f8fbff] min-h-screen flex flex-col font-sans pb-10">
@@ -169,6 +188,19 @@ const WorkerDashboard = () => {
           </button>
         </div>
 
+        {/* GPS Status Indicator */}
+        {geoStatus && (
+          <div className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-medium transition-all ${
+            geoStatus === 'loading' ? 'bg-blue-50 text-blue-600' :
+            geoStatus === 'success' ? 'bg-emerald-50 text-emerald-600' :
+            'bg-amber-50 text-amber-600'
+          }`}>
+            {geoStatus === 'loading' && <><Loader2 size={16} className="animate-spin" /> Obteniendo ubicación GPS...</>}
+            {geoStatus === 'success' && <><MapPin size={16} /> Ubicación registrada correctamente</>}
+            {geoStatus === 'error' && <><AlertCircle size={16} /> No se pudo obtener la ubicación</>}
+          </div>
+        )}
+
         {/* Main Action Button */}
         <button
           onClick={handleShiftAction}
@@ -179,7 +211,12 @@ const WorkerDashboard = () => {
               : 'bg-[#0ea5e9] shadow-blue-200'
           } ${isSubmitting ? 'opacity-70' : ''}`}
         >
-          {activeShift ? (
+          {isSubmitting ? (
+            <>
+              <Loader2 size={22} className="animate-spin" />
+              <span>Procesando...</span>
+            </>
+          ) : activeShift ? (
             <>
               <LogOut size={22} className="rotate-180" />
               <span>TERMINAR TURNO</span>
@@ -199,7 +236,7 @@ const WorkerDashboard = () => {
               Turnos de la Semana
             </h3>
             <span className="text-[12px] font-medium text-[#0ea5e9] bg-blue-50 px-3 py-1 rounded-full">
-              27 abr - 03 may
+              {weekDisplayRange}
             </span>
           </div>
 
@@ -221,6 +258,9 @@ const WorkerDashboard = () => {
                         <div className="text-[12px] text-[#94a3b8] flex items-center gap-1">
                           {new Date(entry.clockIn).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
                           {entry.clockOut && ` - ${new Date(entry.clockOut).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}`}
+                          {entry.clockInLat && (
+                            <MapPin size={10} className="text-emerald-400 ml-1" title={`GPS: ${entry.clockInLat.toFixed(4)}, ${entry.clockInLng.toFixed(4)}`} />
+                          )}
                         </div>
                       </div>
                     </div>
@@ -232,7 +272,8 @@ const WorkerDashboard = () => {
                         entry.status === 'approved' ? 'text-emerald-500' : 
                         entry.status === 'rejected' ? 'text-red-500' : 'text-amber-500'
                       }`}>
-                        {entry.status}
+                        {entry.status === 'approved' ? 'Aprobado' : 
+                         entry.status === 'rejected' ? 'Rechazado' : 'Pendiente'}
                       </div>
                     </div>
                   </div>

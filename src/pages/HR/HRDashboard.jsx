@@ -1,19 +1,13 @@
 import React, { useState } from 'react';
 import { useData } from '../../context/DataContext';
-import { Filter, Search, Eye, Calendar, Clock, FileText, ChevronLeft, CreditCard } from 'lucide-react';
-
-// Helper function updated to date range
-const getWeekRange = (dateString) => {
-  const d = new Date(dateString);
-  const day = d.getDay();
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-  const monday = new Date(d.setDate(diff));
-  const sunday = new Date(monday);
-  sunday.setDate(monday.getDate() + 6);
-
-  const options = { day: '2-digit', month: '2-digit' };
-  return `${monday.toLocaleDateString('es-ES', options)} al ${sunday.toLocaleDateString('es-ES', options)}`;
-};
+import { Search, ChevronLeft } from 'lucide-react';
+import {
+  getWeekRange,
+  formatTime,
+  getStatusLabel,
+  groupEntriesByWorkerWeek,
+  getSortedWeeks
+} from '../../lib/utils';
 
 const HRDashboard = () => {
   const { timeEntries } = useData();
@@ -24,69 +18,12 @@ const HRDashboard = () => {
   // Modal State
   const [selectedGroup, setSelectedGroup] = useState(null);
 
-  // 1. Group by Worker + Week
-  const weeklyGroupsMap = {};
-  timeEntries.forEach(entry => {
-    const weekKey = getWeekRange(entry.date);
-    const groupKey = `${entry.workerId}_${weekKey}`;
-
-    if (!weeklyGroupsMap[groupKey]) {
-      weeklyGroupsMap[groupKey] = {
-        id: groupKey,
-        workerId: entry.workerId,
-        workerName: entry.workerName,
-        weekKey: weekKey,
-        entries: [],
-        totalHours: 0,
-        extraHours: 0,
-        specialHours: 0, // Horas en domingo
-        totalDietas: 0,  // Contador de dietas
-        analiticas: new Set(),
-      };
-    }
-
-    const group = weeklyGroupsMap[groupKey];
-    group.entries.push(entry);
-
-    if (entry.analitica) group.analiticas.add(entry.analitica);
-    if (entry.dieta) group.totalDietas = 1; // Máximo 1 dieta por semana
-
-    if (entry.clockIn && entry.clockOut) {
-      const hrs = (new Date(entry.clockOut) - new Date(entry.clockIn)) / 3600000;
-      const d = new Date(entry.date);
-      if (d.getDay() === 0) {
-        group.specialHours += hrs;
-      } else {
-        group.totalHours += Math.min(hrs, 8);
-        group.extraHours += Math.max(0, hrs - 8);
-      }
-    }
-  });
-
-  // 2. Process Grouped List
-  const groupedList = Object.values(weeklyGroupsMap).map(group => {
-    let overallStatus = 'approved';
-    if (group.entries.some(e => e.status === 'rejected')) overallStatus = 'rejected';
-    else if (group.entries.some(e => e.status === 'pending')) overallStatus = 'pending';
-
-    return { ...group, overallStatus, analiticaJoin: Array.from(group.analiticas).join(', ') || 'N/A' };
-  });
-
+  // Use shared grouping utility
+  const groupedList = groupEntriesByWorkerWeek(timeEntries);
   const currentWeek = getWeekRange(new Date().toISOString());
+  const availableWeeks = getSortedWeeks(groupedList, currentWeek);
 
-  const availableWeeks = Array.from(new Set(groupedList.map(g => g.weekKey))).sort((a, b) => {
-    const parseDate = (str) => {
-      const parts = str.split(' ')[0].split('/'); // DD/MM/YYYY
-      if (parts.length === 3) return new Date(parts[2], parts[1] - 1, parts[0]).getTime();
-      return 0;
-    };
-    return parseDate(b) - parseDate(a); // descendente
-  });
-  if (!availableWeeks.includes(currentWeek)) {
-    availableWeeks.unshift(currentWeek);
-  }
-
-  // 3. Filter: aplicar filtros dinámicos
+  // Filter
   const filteredGroups = groupedList.filter(g =>
     (filterWeek === 'todas' || g.weekKey === filterWeek) &&
     (filterState === 'todos' || g.overallStatus === filterState) &&
@@ -94,16 +31,7 @@ const HRDashboard = () => {
   );
 
   const getStatusText = (status) => {
-    switch (status) {
-      case 'approved': return <span className="text-[12px] text-slate-600">Aprobado</span>;
-      case 'rejected': return <span className="text-[12px] text-slate-600">Rechazado</span>;
-      default: return <span className="text-[12px] text-slate-600">Pendiente</span>;
-    }
-  };
-
-  const formatTime = (isoString) => {
-    if (!isoString) return '--:--';
-    return new Date(isoString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return <span className="text-[12px] text-slate-600">{getStatusLabel(status)}</span>;
   };
 
   const closeModal = () => {
