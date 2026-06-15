@@ -6,7 +6,9 @@ import {
   formatTime,
   getStatusLabel,
   groupEntriesByWorkerWeek,
-  getSortedWeeks
+  getSortedWeeks,
+  roundToHalfHour,
+  parseLocalDate
 } from '../../lib/utils';
 
 const HRDashboard = () => {
@@ -107,9 +109,10 @@ const HRDashboard = () => {
               </thead>
               <tbody>
                 {selectedGroup.entries.map(entry => {
-                  const d = new Date(entry.date);
+                  const d = parseLocalDate(entry.date);
                   const isSunday = d.getDay() === 0;
-                  const entryHrs = entry.clockIn && entry.clockOut ? (new Date(entry.clockOut) - new Date(entry.clockIn)) / 3600000 : 0;
+                  const rawHrs = entry.clockIn && entry.clockOut ? (new Date(entry.clockOut) - new Date(entry.clockIn)) / 3600000 : 0;
+                  const entryHrs = roundToHalfHour(rawHrs);
                   const normalHrs = isSunday ? 0 : Math.min(entryHrs, 8);
                   const extraHrs = isSunday ? 0 : Math.max(0, entryHrs - 8);
 

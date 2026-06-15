@@ -7,7 +7,9 @@ import {
   formatTime, 
   getStatusLabel, 
   groupEntriesByWorkerWeek, 
-  getSortedWeeks 
+  getSortedWeeks,
+  roundToHalfHour,
+  parseLocalDate
 } from '../../lib/utils';
 
 const ManagerDashboard = () => {
@@ -192,10 +194,10 @@ const ManagerDashboard = () => {
                   let dayHrs = 0;
                   let normalHrs = 0;
                   let extraHrs = 0;
-                  const d = new Date(entry.date);
+                  const d = parseLocalDate(entry.date);
                   const isSunday = d.getDay() === 0;
                   if (entry.clockIn && entry.clockOut) {
-                    dayHrs = (new Date(entry.clockOut) - new Date(entry.clockIn)) / 3600000;
+                    dayHrs = roundToHalfHour((new Date(entry.clockOut) - new Date(entry.clockIn)) / 3600000);
                     normalHrs = isSunday ? 0 : Math.min(dayHrs, 8);
                     extraHrs = isSunday ? 0 : Math.max(0, dayHrs - 8);
                   }

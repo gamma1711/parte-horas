@@ -14,7 +14,7 @@ import {
   Loader2
 } from 'lucide-react';
 import logoRevergy from '../../assets/7-revergy_horizontal.png';
-import { ANALITICAS, getCurrentWeekDisplayRange, getCurrentPosition } from '../../lib/utils';
+import { ANALITICAS, getCurrentWeekDisplayRange, getCurrentPosition, parseLocalDate } from '../../lib/utils';
 
 const WorkerDashboard = () => {
   const { timeEntries, currentUser, logout, clockIn, clockOut } = useData();
@@ -253,7 +253,7 @@ const WorkerDashboard = () => {
                       </div>
                       <div>
                         <div className="text-[14px] font-bold text-[#1e293b]">
-                          {new Date(entry.date).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' })}
+                          {parseLocalDate(entry.date).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' })}
                         </div>
                         <div className="text-[12px] text-[#94a3b8] flex items-center gap-1">
                           {new Date(entry.clockIn).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}

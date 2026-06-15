@@ -8,11 +8,11 @@ export const useData = () => useContext(DataContext);
 const getRoleFromEmail = (email) => {
   if (!email) return 'worker';
   const cleanEmail = email.trim().toLowerCase();
-  
+
   const hrEmails = (import.meta.env.VITE_HR_EMAILS || '').toLowerCase().split(',').map(e => e.trim());
   const hsqeEmails = (import.meta.env.VITE_HSQE_EMAILS || '').toLowerCase().split(',').map(e => e.trim());
   const managerEmails = (import.meta.env.VITE_MANAGER_EMAILS || '').toLowerCase().split(',').map(e => e.trim());
-  
+
   if (hrEmails.includes(cleanEmail)) return 'rrhh';
   if (hsqeEmails.includes(cleanEmail)) return 'hsqe';
   if (managerEmails.includes(cleanEmail)) return 'manager';
@@ -51,7 +51,7 @@ export const DataProvider = ({ children }) => {
       } else if (usersError) {
         console.error("Error cargando usuarios:", usersError);
       }
-      
+
       const { data: entriesData, error: entriesError } = await supabase
         .from('time_entries')
         .select(`*`)
@@ -141,7 +141,7 @@ export const DataProvider = ({ children }) => {
   const login = async (rawRfc, password) => {
     const rfc = rawRfc.trim().toUpperCase();
     console.log("Iniciando proceso de login para RFC:", rfc);
-    
+
     try {
       // 1. Buscar el correo asociado al RFC en la tabla 'users' (caso-insensible)
       const { data: userProfile, error: searchError } = await supabase
@@ -199,7 +199,7 @@ export const DataProvider = ({ children }) => {
       .from('time_entries')
       .update({ status, comments })
       .in('id', entryIdsToApprove);
-        
+
     if (!error) {
       setTimeEntries(entries =>
         entries.map(entry =>
@@ -293,12 +293,12 @@ export const DataProvider = ({ children }) => {
 
   const filteredTimeEntries = React.useMemo(() => {
     if (!currentUser) return [];
-    
+
     const role = currentUser.role.toLowerCase();
-    
+
     // RRHH ve todo
     if (role === 'rrhh') return timeEntries;
-    
+
     // Managers ven su área (comparación case-insensitive)
     if (role.includes('manager') || role === 'hsqe') {
       const managerArea = (currentUser.area || '').toLowerCase().trim();
@@ -307,7 +307,7 @@ export const DataProvider = ({ children }) => {
         return workerArea === managerArea;
       });
     }
-    
+
     // Todos los demás (Trabajadores, IT, etc.) ven sus propios registros
     return timeEntries.filter(e => e.workerId === currentUser.id);
   }, [timeEntries, currentUser]);

@@ -3,11 +3,25 @@
 // =============================================================
 
 /**
+ * Parsea un string de fecha (YYYY-MM-DD) como hora local.
+ * Evita el desfase de zona horaria que causa new Date("YYYY-MM-DD")
+ * al interpretarlo como UTC.
+ */
+export const parseLocalDate = (dateString) => {
+  if (!dateString) return new Date();
+  // Si es solo fecha (YYYY-MM-DD), agregar T00:00:00 para forzar hora local
+  if (typeof dateString === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+    return new Date(dateString + 'T00:00:00');
+  }
+  return new Date(dateString);
+};
+
+/**
  * Devuelve el rango de semana como string "DD/MM al DD/MM" 
  * para un dateString dado (ISO o Date-compatible).
  */
 export const getWeekRange = (dateString) => {
-  const d = new Date(dateString);
+  const d = parseLocalDate(dateString);
   const day = d.getDay();
   const diff = d.getDate() - day + (day === 0 ? -6 : 1);
   const monday = new Date(d.setDate(diff));
@@ -53,6 +67,20 @@ export const ANALITICAS = [
   'MX0094200', 'MX0096100', 'MX0096200', 'MX0096300', 'MX0097100', 'MX0097200',
   'MX0097300', 'MX0098400', 'MX00OYMPA', 'MX00REPEJ'
 ];
+
+/**
+ * Redondea horas a medias horas (.0 o .5).
+ * - Decimal .0 a .4 → baja a .0
+ * - Decimal .5 a .8 → baja a .5
+ * - Decimal .9       → sube al siguiente entero (.0)
+ */
+export const roundToHalfHour = (hrs) => {
+  const whole = Math.floor(hrs);
+  const decimal = Math.round((hrs - whole) * 10) / 10; // normalizar a 1 decimal
+  if (decimal >= 0.9) return whole + 1;
+  if (decimal >= 0.5) return whole + 0.5;
+  return whole;
+};
 
 /**
  * Formatea un ISO string a hora HH:MM local.
@@ -109,8 +137,9 @@ export const groupEntriesByWorkerWeek = (timeEntries) => {
     if (entry.dieta) group.totalDietas = 1;
 
     if (entry.clockIn && entry.clockOut) {
-      const hrs = (new Date(entry.clockOut) - new Date(entry.clockIn)) / 3600000;
-      const d = new Date(entry.date);
+      const rawHrs = (new Date(entry.clockOut) - new Date(entry.clockIn)) / 3600000;
+      const hrs = roundToHalfHour(rawHrs);
+      const d = parseLocalDate(entry.date);
       if (d.getDay() === 0) {
         group.specialHours += hrs;
       } else {
