@@ -18,7 +18,7 @@
     "react-dom": "^19.2.0",
     "react-hook-form": "^7.71.2",
     "react-router-dom": "^7.13.1",
-    "supabase": "^2.81.3",
+    "supabase": "^2.107.0",
     "tailwindcss": "^4.2.1"
   },
   "devDependencies": {
